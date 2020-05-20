@@ -1,7 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+)
 
 func main() {
-	fmt.Printf("Hello\n");
+
+	directoryPtr := flag.String("dir", ".", "the directory to search")
+
+	flag.Parse()
+
+	fmt.Println("Hello ", *directoryPtr)
 }
