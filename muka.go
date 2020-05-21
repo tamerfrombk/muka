@@ -79,7 +79,7 @@ func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
 	for _, filePath := range filePaths {
 		fileHash, err := hashFile(filePath)
 		if err != nil {
-			fmt.Printf("Could not hash '%s' because '%s'.\n", filePath, err.Error())
+			fmt.Fprintf(os.Stderr, "Could not hash '%s' because '%s'.\n", filePath, err.Error())
 			continue
 		}
 
@@ -105,9 +105,10 @@ func main() {
 
 	fmt.Printf("Processing directory '%s'.\n", *directoryPtr)
 
-	duplicates, err := findDuplicateFiles(*directoryPtr)
+	directory := *directoryPtr
+	duplicates, err := findDuplicateFiles(directory)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "Unable to find duplicate files for directory '%s' because '%s'.", directory, err.Error())
 	}
 
 	for _, duplicate := range duplicates {
