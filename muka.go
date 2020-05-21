@@ -34,12 +34,7 @@ func getFilePaths(dir string) ([]string, error) {
 			return nil
 		}
 
-		rel := file
-		if dir != "." {
-			rel = file[len(dir)+1:]
-		}
-
-		absolutePath, _ := filepath.Abs(rel)
+		absolutePath, _ := filepath.Abs(file)
 		files = append(files, filepath.ToSlash(absolutePath))
 
 		return nil
