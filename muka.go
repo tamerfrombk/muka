@@ -16,6 +16,12 @@ type FileHash struct {
 	Hash         string
 }
 
+// DuplicateFile holds original and duplicate FileHashes
+type DuplicateFile struct {
+	Original  FileHash
+	Duplicate FileHash
+}
+
 func getFilePaths(dir string) ([]string, error) {
 	var files []string
 	dir = filepath.Clean(dir)
@@ -46,48 +52,55 @@ func getFilePaths(dir string) ([]string, error) {
 	return files, nil
 }
 
-func hashFile(file string) (string, error) {
-	f, err := os.Open(file)
+func hashFile(filePath string) (FileHash, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
-		return "", err
+		return FileHash{}, err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return FileHash{}, err
 	}
 
-	return hex.EncodeToString(h.Sum(nil)), nil
+	fileHash := FileHash{
+		AbsolutePath: filePath,
+		Hash:         hex.EncodeToString(hasher.Sum(nil)),
+	}
+
+	return fileHash, nil
 }
 
-func processFiles(directory string) (map[string]FileHash, error) {
+func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
 	filePaths, err := getFilePaths(directory)
 
-	hashes := make(map[string]FileHash)
+	duplicateFiles := make([]DuplicateFile, 0, len(filePaths))
 	if err != nil {
-		return hashes, err
+		return duplicateFiles, err
 	}
 
-	for i := range filePaths {
-		filePath := filePaths[i]
-		hash, err := hashFile(filePath)
+	hashes := make(map[string]FileHash)
+	for _, filePath := range filePaths {
+		fileHash, err := hashFile(filePath)
 		if err != nil {
 			fmt.Printf("Could not hash '%s'.\n", filePath)
 			continue
 		}
 
-		if existingFile, exists := hashes[hash]; exists {
-			fmt.Printf("'%s' is a duplicate of '%s'!\n", filePath, existingFile.AbsolutePath)
-		} else {
-			hashes[hash] = FileHash{
-				AbsolutePath: filePath,
-				Hash:         hash,
+		if existingFileHash, exists := hashes[fileHash.Hash]; exists {
+			fmt.Printf("'%s' is a duplicate of '%s'!\n", filePath, existingFileHash.AbsolutePath)
+			dup := DuplicateFile{
+				Original:  existingFileHash,
+				Duplicate: fileHash,
 			}
+			duplicateFiles = append(duplicateFiles, dup)
+		} else {
+			hashes[fileHash.Hash] = fileHash
 		}
 	}
 
-	return hashes, nil
+	return duplicateFiles, nil
 }
 
 func main() {
@@ -98,13 +111,13 @@ func main() {
 
 	fmt.Printf("Processing directory '%s'.\n", *directoryPtr)
 
-	hashes, err := processFiles(*directoryPtr)
+	duplicates, err := findDuplicateFiles(*directoryPtr)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	for p, h := range hashes {
-		fmt.Printf("'%s => '%s'\n", p, h)
+	for _, duplicate := range duplicates {
+		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicate.AbsolutePath, duplicate.Original.AbsolutePath)
 	}
 
 	fmt.Println("Done.")
