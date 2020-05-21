@@ -79,12 +79,11 @@ func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
 	for _, filePath := range filePaths {
 		fileHash, err := hashFile(filePath)
 		if err != nil {
-			fmt.Printf("Could not hash '%s'.\n", filePath)
+			fmt.Printf("Could not hash '%s' because '%s'.\n", filePath, err.Error())
 			continue
 		}
 
 		if existingFileHash, exists := hashes[fileHash.Hash]; exists {
-			fmt.Printf("'%s' is a duplicate of '%s'!\n", filePath, existingFileHash.AbsolutePath)
 			dup := DuplicateFile{
 				Original:  existingFileHash,
 				Duplicate: fileHash,
