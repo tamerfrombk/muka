@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -54,7 +54,7 @@ func hashFile(filePath string) (FileHash, error) {
 	}
 	defer file.Close()
 
-	hasher := sha256.New()
+	hasher := sha1.New()
 	if _, err := io.Copy(hasher, file); err != nil {
 		return FileHash{}, err
 	}
