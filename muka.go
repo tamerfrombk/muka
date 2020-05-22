@@ -116,7 +116,7 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 		fmt.Print("Which file do you wish to remove? [1/2] > ")
 
 		line, _ := reader.ReadString('\n')
-		if line == "" {
+		if line == "\n" {
 			continue
 		}
 
