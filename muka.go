@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha1"
 	"encoding/hex"
 	"flag"
@@ -97,6 +98,49 @@ func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
 	return duplicateFiles, nil
 }
 
+// This wrapper is here to possibly turn this into a goroutine
+func deleteFile(path string) error {
+
+	//	err := os.Remove(path)
+	var err error = nil
+
+	fmt.Printf("'%s' was removed.\n", path)
+
+	return err
+}
+
+func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
+	original := dup.Original.AbsolutePath
+	duplicate := dup.Duplicate.AbsolutePath
+
+	for done := false; !done; {
+		fmt.Println("The following are duplicates:")
+		fmt.Printf("1) %s\n", original)
+		fmt.Printf("2) %s\n", duplicate)
+		fmt.Print("Which file do you wish to remove? [1/2] > ")
+
+		line, _ := reader.ReadString('\n')
+		if line == "" {
+			continue
+		}
+
+		answer := line[0]
+		switch answer {
+		case '1':
+			deleteFile(original)
+			done = true
+			break
+		case '2':
+			deleteFile(duplicate)
+			done = true
+			break
+		default:
+			fmt.Fprintf(os.Stderr, "'%c' is not acceptable.\n", answer)
+			break
+		}
+	}
+}
+
 func main() {
 
 	directoryPtr := flag.String("dir", ".", "the directory to search")
@@ -111,8 +155,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Unable to find duplicate files for directory '%s' because '%s'.", directory, err.Error())
 	}
 
+	reader := bufio.NewReader(os.Stdin)
 	for _, duplicate := range duplicates {
-		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicate.AbsolutePath, duplicate.Original.AbsolutePath)
+		promptToDelete(reader, duplicate)
 	}
 
 	fmt.Println("Done.")
