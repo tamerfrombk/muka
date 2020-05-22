@@ -23,8 +23,8 @@ type DuplicateFile struct {
 	Duplicate FileHash
 }
 
-func getFilePaths(dir string) ([]string, error) {
-	var files []string
+func getFileHashes(dir string) ([]FileHash, error) {
+	var files []FileHash
 	dir = filepath.Clean(dir)
 	err := filepath.Walk(dir, func(file string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -36,7 +36,14 @@ func getFilePaths(dir string) ([]string, error) {
 		}
 
 		absolutePath, _ := filepath.Abs(file)
-		files = append(files, filepath.ToSlash(absolutePath))
+		cleanPath := filepath.ToSlash(absolutePath)
+		hash, err := hashFile(cleanPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "'%s' could not be hashed because '%s'.\n", cleanPath, err.Error())
+			return nil
+		}
+
+		files = append(files, hash)
 
 		return nil
 	})
@@ -68,22 +75,11 @@ func hashFile(filePath string) (FileHash, error) {
 	return fileHash, nil
 }
 
-func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
-	filePaths, err := getFilePaths(directory)
-
-	duplicateFiles := make([]DuplicateFile, 0, len(filePaths))
-	if err != nil {
-		return duplicateFiles, err
-	}
+func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 
 	hashes := make(map[string]FileHash)
-	for _, filePath := range filePaths {
-		fileHash, err := hashFile(filePath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not hash '%s' because '%s'.\n", filePath, err.Error())
-			continue
-		}
-
+	duplicateFiles := make([]DuplicateFile, 0, len(fileHashes))
+	for _, fileHash := range fileHashes {
 		if existingFileHash, exists := hashes[fileHash.Hash]; exists {
 			dup := DuplicateFile{
 				Original:  existingFileHash,
@@ -95,7 +91,7 @@ func findDuplicateFiles(directory string) ([]DuplicateFile, error) {
 		}
 	}
 
-	return duplicateFiles, nil
+	return duplicateFiles
 }
 
 // This wrapper is here to possibly turn this into a goroutine
@@ -149,12 +145,13 @@ func main() {
 
 	fmt.Printf("Processing directory '%s'.\n", *directoryPtr)
 
-	directory := *directoryPtr
-	duplicates, err := findDuplicateFiles(directory)
+	fileHashes, err := getFileHashes(*directoryPtr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to find duplicate files for directory '%s' because '%s'.", directory, err.Error())
+		fmt.Fprintf(os.Stderr, "blah due to '%s'.\n", err.Error())
+		os.Exit(1)
 	}
 
+	duplicates := FindDuplicateFiles(fileHashes)
 	reader := bufio.NewReader(os.Stdin)
 	for _, duplicate := range duplicates {
 		promptToDelete(reader, duplicate)
