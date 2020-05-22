@@ -131,7 +131,7 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 			done = true
 			break
 		default:
-			fmt.Fprintf(os.Stderr, "'%c' is not acceptable.\n", answer)
+			fmt.Fprintf(os.Stderr, "'%c' is not acceptable answer.\n", answer)
 			break
 		}
 	}
@@ -147,7 +147,7 @@ func main() {
 
 	fileHashes, err := getFileHashes(*directoryPtr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "blah due to '%s'.\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", *directoryPtr, err.Error())
 		os.Exit(1)
 	}
 
