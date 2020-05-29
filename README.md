@@ -8,6 +8,8 @@
 
 By default, `muka` will recursively search the current working directory and list all duplicate files.
 
+To review the full help menu, use the `-h` or `--help` flags.
+
 ### Examples
 
 List all duplicate files in the current working directory:

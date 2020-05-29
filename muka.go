@@ -23,6 +23,13 @@ type DuplicateFile struct {
 	Duplicate FileHash
 }
 
+// Args holds the parsed program arguments
+type Args struct {
+	OriginalDirectory string
+	DirectoryToSearch string
+	IsInteractive     bool
+}
+
 func getFileHashes(dir string) ([]FileHash, error) {
 	var files []FileHash
 	dir = filepath.Clean(dir)
@@ -143,10 +150,9 @@ func printDuplicates(duplicates []DuplicateFile) {
 	}
 }
 
-func main() {
-
+func parseArgs() Args {
 	directoryPtr := flag.String("d", ".", "the directory to search")
-	interactivePtr := flag.Bool("i", false, "interactive mode to remove duplicates")
+	interactivePtr := flag.Bool("i", false, "enable interactive mode to remove duplicates")
 
 	flag.Parse()
 
@@ -157,13 +163,24 @@ func main() {
 		directoryToSearch = *directoryPtr
 	}
 
-	fileHashes, err := getFileHashes(directoryToSearch)
+	return Args{
+		OriginalDirectory: *directoryPtr,
+		DirectoryToSearch: directoryToSearch,
+		IsInteractive:     *interactivePtr,
+	}
+}
+
+func main() {
+
+	args := parseArgs()
+
+	fileHashes, err := getFileHashes(args.DirectoryToSearch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", *directoryPtr, err.Error())
+		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", args.OriginalDirectory, err.Error())
 		os.Exit(1)
 	}
 
-	if duplicates := FindDuplicateFiles(fileHashes); *interactivePtr {
+	if duplicates := FindDuplicateFiles(fileHashes); args.IsInteractive {
 		reader := bufio.NewReader(os.Stdin)
 		for _, duplicate := range duplicates {
 			promptToDelete(reader, duplicate)
