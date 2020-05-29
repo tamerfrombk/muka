@@ -1,46 +1,52 @@
 # Muka
 
-`muka` is a program for detecting and removing duplicate files from a directory. The word `muka` comes from the word for "duplicate" in Arabic: `mukarar` (مكرر).
+`muka` is a program for detecting and removing duplicate files from a directory. The word `muka` is derived from the word for "duplicate" in Arabic: `mukarar` (مكرر).
+
+`muka` attempts to follow the `KISS` principle while keeping data safety in mind. This means `muka` only focuses on delivering its intended core functionality (detecting and removing duplicate files) without many bells and whistles; `muka` comes with a handful of command line flags and implements sane and data safe behavior by default.
+
+By default, `muka` will recursively search the current working directory and list all duplicate files _without deleting anything_. This helps keep your data safe against accidental deletion by requiring you to explicitly state you wish to delete files. Additionally, `muka` comes with a dry run mode to simulate deleting files. For data safety reasons, it's recommended to run `muka` in dry run mode when scanning a directory for the first time.
+
+To actually delete files, `muka` supports interactive and automatic behavior; use the `-i` flag to interactively delete duplicates or `-f` to have `muka` delete them for you without intervention. Dry run mode can be combined with both of these methods to increase your data safety.
+
+__Note__: When a file has multiple duplicates, this `-f` option will always remove the multiple duplicates over the original. This is done to maximize the amount of freed space. In the case of a file having a single duplicate, one of them is arbitrarily chosen to be removed.
+
+Please exercise caution when deleting files -- especially using `-f`; once a file is deleted, there is no easy way of getting it back.
 
 ## Getting Started
 
-`muka` uses the Go standard library and build tools. 
-
-By default, `muka` will recursively search the current working directory and list all duplicate files. To actually delete files, use the `-i` flag to interactively delete duplicates or `-f` to have `muka` delete them for you without intervention. 
-
-__Note__: When a file has multiple duplicates, this `-f` option will always remove the multiple duplicates over the original. In the case of a file having a single duplicate, one of them is arbitrarily chosen to be removed.
-
-Please exercise caution when deleting your files; once a file is deleted, there is no _easy_ way of getting it back.
+`muka` uses the Go standard library and build tools.
 
 To review the full help menu for `muka`, use the `-h` or `--help` flags.
 
-### Examples
+## Examples
 
 List all duplicate files in the current working directory:
 ```
 > cd /tmp
 > muka 
 
-'/tmp/file2.md' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
-'/tmp/file3.foo' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+Original: /tmp/file1.txt
+Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
+
 ```
 
 List all duplicate files in a specific directory:
 ```
 > muka -d /tmp
 
-'/tmp/file2.md' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
-'/tmp/file3.foo' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+Original: /tmp/file1.txt
+Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
+
 ```
 
-List and interactively remove duplicates:
+Interactively remove duplicates (`o` is for `original`, `d` is for `duplicates`, and `s` is to skip the current selection):
 ```
 > muka -i
 
-The following are duplicates:
-1) /tmp/file1.txt
-2) /tmp/file2.md
-Which file do you wish to remove? [1/2] >
+Original: /tmp/file1.txt
+Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
+
+Which file(s) do you wish to remove? [o/d/s] >
 ```
 
 Remove duplicates automatically without prompting:
@@ -51,10 +57,9 @@ Remove duplicates automatically without prompting:
 '/tmp/file3.foo' was removed.
 ```
 
-The dry run option can be combined with interactively removing files or automatically removing them:
+`muka` also has a dry run option that can be combined with interactively or automatically removing files:
 
 Automatic dry run:
-
 ```
 > muka -f --dryrun
 
@@ -63,12 +68,13 @@ Automatic dry run:
 ```
 
 Interactive dry run:
-
 ```
 > muka -i --dryrun
 
-'[/tmp/file2.md /tmp/file3.foo]' are duplicates of '/tmp/file1.txt'.
-Which file(s) do you wish to remove? [1/2] > 1
+Original: /tmp/file1.txt
+Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
+
+Which file(s) do you wish to remove? [o/d/s] > d
 '/tmp/file2.md' would be removed.
 '/tmp/file3.foo' would be removed.
 ```
@@ -88,6 +94,14 @@ Alternatively, you can move the `muka` executable after building to a directory 
 ### Running the tests
 
 `go test -v`
+
+## Limitations
+The following are known limitations of `muka`. Some of these will be built into the program in the future and some may not:
+
+1. Specifying a recursion depth
+    - As of now, `muka` does a full recursive search of the specified directory.
+2. File filtering
+    - As of now, `muka` looks for duplicates in all files under the specified directory.
 
 ## Contributing
 
