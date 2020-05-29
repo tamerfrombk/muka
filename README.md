@@ -6,9 +6,13 @@
 
 `muka` uses the Go standard library and build tools. 
 
-By default, `muka` will recursively search the current working directory and list all duplicate files.
+By default, `muka` will recursively search the current working directory and list all duplicate files. To actually delete files, use the `-i` flag to interactively delete duplicates or `-f` to have `muka` delete them for you without intervention. 
 
-To review the full help menu, use the `-h` or `--help` flags.
+__Note__: When a file has multiple duplicates, this `-f` option will always remove the multiple duplicates over the original. In the case of a file having a single duplicate, one of them is arbitrarily chosen to be removed.
+
+Please exercise caution when deleting your files; once a file is deleted, there is no _easy_ way of getting it back.
+
+To review the full help menu for `muka`, use the `-h` or `--help` flags.
 
 ### Examples
 
@@ -40,8 +44,6 @@ Which file do you wish to remove? [1/2] >
 ```
 
 Remove duplicates automatically without prompting:
-
-__Note__: When a file has multiple duplicates, this option will always remove the multiple duplicates over the "original". In the case of a file having a single duplicate, one of them is arbitrarily chosen to be removed.
 ```
 > muka -f
 
@@ -49,9 +51,31 @@ __Note__: When a file has multiple duplicates, this option will always remove th
 '/tmp/file3.foo' was removed.
 ```
 
+The dry run option can be combined with interactively removing files or automatically removing them:
+
+Automatic dry run:
+
+```
+> muka -f --dryrun
+
+'/tmp/file2.md' would be removed.
+'/tmp/file3.foo' would be removed.
+```
+
+Interactive dry run:
+
+```
+> muka -i --dryrun
+
+'[/tmp/file2.md /tmp/file3.foo]' are duplicates of '/tmp/file1.txt'.
+Which file(s) do you wish to remove? [1/2] > 1
+'/tmp/file2.md' would be removed.
+'/tmp/file3.foo' would be removed.
+```
+
 ### Building
 
-`go build muka.go`
+`go build muka.go deleter.go duplicatefilecache.go`
 
 ### Installing
 
@@ -67,4 +91,4 @@ Alternatively, you can move the `muka` executable after building to a directory 
 
 ## Contributing
 
-Simply open a PR for your changes and I'll review it.
+Simply open a PR with your changes and I'll review it.

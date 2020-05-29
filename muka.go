@@ -11,77 +11,13 @@ import (
 	"path/filepath"
 )
 
-// FileHash defines the file hash
-type FileHash struct {
-	AbsolutePath string
-	Hash         string
-}
-
-func (hash FileHash) String() string {
-
-	return hash.AbsolutePath
-}
-
-// DuplicateFileCache holds original and duplicate FileHashes
-type DuplicateFileCache struct {
-	fileHashByHash map[string]FileHash
-	duplicates     []DuplicateFile
-}
-
-// NewCache DuplicateFileCache constructor
-func NewCache() DuplicateFileCache {
-
-	return DuplicateFileCache{
-		fileHashByHash: make(map[string]FileHash),
-		duplicates:     make([]DuplicateFile, 0),
-	}
-}
-
-func (cache *DuplicateFileCache) findDuplicateFile(hash FileHash) int {
-
-	for i, dup := range cache.duplicates {
-		if dup.Original.Hash == hash.Hash {
-			return i
-		}
-	}
-
-	return -1
-}
-
-// Add adds a FileHash to the cache accounting for possible duplicates
-func (cache *DuplicateFileCache) Add(hash FileHash) {
-	if _, exists := cache.fileHashByHash[hash.Hash]; exists {
-		idx := cache.findDuplicateFile(hash)
-		// no need to check idx since we know we have it
-		dup := &cache.duplicates[idx]
-		dup.Duplicates = append(dup.Duplicates, hash)
-	} else {
-		cache.fileHashByHash[hash.Hash] = hash
-		cache.duplicates = append(cache.duplicates, DuplicateFile{
-			Original:   hash,
-			Duplicates: make([]FileHash, 0),
-		})
-	}
-}
-
-// GetDuplicates retrieves the list of duplicates from the cache
-func (cache *DuplicateFileCache) GetDuplicates() []DuplicateFile {
-
-	return cache.duplicates
-}
-
-// DuplicateFile holds original and duplicate FileHashes
-type DuplicateFile struct {
-	Original   FileHash
-	Duplicates []FileHash
-}
-
 // Args holds the parsed program arguments
 type Args struct {
 	OriginalDirectory string
 	DirectoryToSearch string
 	IsInteractive     bool
 	IsForce           bool
+	IsDryRun          bool
 }
 
 func getFileHashes(dir string) ([]FileHash, error) {
@@ -147,18 +83,7 @@ func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 	return cache.GetDuplicates()
 }
 
-// This wrapper is here to possibly turn this into a goroutine
-func deleteFile(path string) error {
-
-	//	err := os.Remove(path)
-	var err error = nil
-
-	fmt.Printf("'%s' was removed.\n", path)
-
-	return err
-}
-
-func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
+func promptToDelete(reader *bufio.Reader, dup DuplicateFile, deleter Deleter) {
 	if len(dup.Duplicates) == 0 {
 		return
 	}
@@ -176,12 +101,12 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 		switch answer {
 		case '1':
 			for _, d := range dup.Duplicates {
-				deleteFile(d.AbsolutePath)
+				deleter.Delete(d.AbsolutePath)
 			}
 			done = true
 			break
 		case '2':
-			deleteFile(dup.Original.AbsolutePath)
+			deleter.Delete(dup.Original.AbsolutePath)
 			done = true
 			break
 		default:
@@ -214,6 +139,7 @@ func parseArgs() Args {
 	directoryPtr := flag.String("d", ".", "the directory to search")
 	interactivePtr := flag.Bool("i", false, "enable interactive mode to remove duplicates")
 	forcePtr := flag.Bool("f", false, "remove duplicates without prompting")
+	dryRunPtr := flag.Bool("dryrun", false, "does not actually remove any files")
 
 	flag.Parse()
 
@@ -229,17 +155,18 @@ func parseArgs() Args {
 		DirectoryToSearch: directoryToSearch,
 		IsInteractive:     *interactivePtr,
 		IsForce:           *forcePtr,
+		IsDryRun:          *dryRunPtr,
 	}
 }
 
-func forceDelete(duplicates []DuplicateFile) {
+func forceDelete(duplicates []DuplicateFile, deleter Deleter) {
 	for _, dup := range duplicates {
 		if len(dup.Duplicates) == 0 {
 			continue
 		}
 
 		for _, f := range dup.Duplicates {
-			deleteFile(f.AbsolutePath)
+			deleter.Delete(f.AbsolutePath)
 		}
 	}
 }
@@ -254,12 +181,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	deleter := MakeDeleter(args.IsDryRun)
 	if duplicates := FindDuplicateFiles(fileHashes); args.IsForce {
-		forceDelete(duplicates)
+		forceDelete(duplicates, deleter)
 	} else if args.IsInteractive {
 		reader := bufio.NewReader(os.Stdin)
 		for _, duplicate := range duplicates {
-			promptToDelete(reader, duplicate)
+			promptToDelete(reader, duplicate, deleter)
 		}
 	} else {
 		printDuplicates(duplicates)
