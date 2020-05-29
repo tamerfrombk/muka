@@ -17,10 +17,63 @@ type FileHash struct {
 	Hash         string
 }
 
+func (hash FileHash) String() string {
+
+	return hash.AbsolutePath
+}
+
+// DuplicateFileCache holds original and duplicate FileHashes
+type DuplicateFileCache struct {
+	fileHashByHash map[string]FileHash
+	duplicates     []DuplicateFile
+}
+
 // DuplicateFile holds original and duplicate FileHashes
 type DuplicateFile struct {
-	Original  FileHash
-	Duplicate FileHash
+	Original   FileHash
+	Duplicates []FileHash
+}
+
+// NewCache DuplicateFileCache constructor
+func NewCache() DuplicateFileCache {
+
+	return DuplicateFileCache{
+		fileHashByHash: make(map[string]FileHash),
+		duplicates:     make([]DuplicateFile, 0),
+	}
+}
+
+func (cache *DuplicateFileCache) findDuplicateFile(hash FileHash) int {
+
+	for i, dup := range cache.duplicates {
+		if dup.Original.Hash == hash.Hash {
+			return i
+		}
+	}
+
+	return -1
+}
+
+// Add adds a FileHash to the cache accounting for possible duplicates
+func (cache *DuplicateFileCache) Add(hash FileHash) {
+	if _, exists := cache.fileHashByHash[hash.Hash]; exists {
+		idx := cache.findDuplicateFile(hash)
+		// no need to check idx since we know we have it
+		dup := &cache.duplicates[idx]
+		dup.Duplicates = append(dup.Duplicates, hash)
+	} else {
+		cache.fileHashByHash[hash.Hash] = hash
+		cache.duplicates = append(cache.duplicates, DuplicateFile{
+			Original:   hash,
+			Duplicates: make([]FileHash, 0),
+		})
+	}
+}
+
+// GetDuplicates retrieves the list of duplicates from the cache
+func (cache *DuplicateFileCache) GetDuplicates() []DuplicateFile {
+
+	return cache.duplicates
 }
 
 // Args holds the parsed program arguments
@@ -82,23 +135,15 @@ func hashFile(filePath string) (FileHash, error) {
 	return fileHash, nil
 }
 
+// FindDuplicateFiles does as it suggests
 func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 
-	hashes := make(map[string]FileHash)
-	duplicateFiles := make([]DuplicateFile, 0, len(fileHashes))
+	cache := NewCache()
 	for _, fileHash := range fileHashes {
-		if existingFileHash, exists := hashes[fileHash.Hash]; exists {
-			dup := DuplicateFile{
-				Original:  existingFileHash,
-				Duplicate: fileHash,
-			}
-			duplicateFiles = append(duplicateFiles, dup)
-		} else {
-			hashes[fileHash.Hash] = fileHash
-		}
+		cache.Add(fileHash)
 	}
 
-	return duplicateFiles
+	return cache.GetDuplicates()
 }
 
 // This wrapper is here to possibly turn this into a goroutine
@@ -113,13 +158,12 @@ func deleteFile(path string) error {
 }
 
 func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
-	original := dup.Original.AbsolutePath
-	duplicate := dup.Duplicate.AbsolutePath
+	if len(dup.Duplicates) == 0 {
+		return
+	}
 
 	for done := false; !done; {
-		fmt.Println("The following are duplicates:")
-		fmt.Printf("1) %s\n", original)
-		fmt.Printf("2) %s\n", duplicate)
+		printDuplicate(dup)
 		fmt.Print("Which file do you wish to remove? [1/2] > ")
 
 		line, _ := reader.ReadString('\n')
@@ -130,11 +174,13 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 		answer := line[0]
 		switch answer {
 		case '1':
-			deleteFile(original)
+			for _, d := range dup.Duplicates {
+				deleteFile(d.AbsolutePath)
+			}
 			done = true
 			break
 		case '2':
-			deleteFile(duplicate)
+			deleteFile(dup.Original.AbsolutePath)
 			done = true
 			break
 		default:
@@ -144,9 +190,22 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 	}
 }
 
+func printDuplicate(duplicate DuplicateFile) {
+	size := len(duplicate.Duplicates)
+	if size == 0 {
+		return
+	}
+
+	if size == 1 {
+		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicates[0], duplicate.Original.AbsolutePath)
+	} else {
+		fmt.Printf("'%s' are duplicates of '%s'.\n", duplicate.Duplicates, duplicate.Original.AbsolutePath)
+	}
+}
+
 func printDuplicates(duplicates []DuplicateFile) {
 	for _, duplicate := range duplicates {
-		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicate.AbsolutePath, duplicate.Original.AbsolutePath)
+		printDuplicate(duplicate)
 	}
 }
 
