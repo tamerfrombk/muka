@@ -6,10 +6,35 @@
 
 `muka` uses the Go standard library and build tools. 
 
+By default, `muka` will recursively search the current working directory and list all duplicate files.
+
 ### Examples
 
+List all duplicate files in the current working directory:
 ```
-TODO
+> cd /tmp
+> muka 
+
+'/tmp/file2.md' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+'/tmp/file3.foo' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+```
+
+List all duplicate files in a specific directory:
+```
+> muka -d /tmp
+
+'/tmp/file2.md' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+'/tmp/file3.foo' is a duplicate of '/home/tamer/projects/go/muka/tmp/file1.txt'.
+```
+
+List and interactively remove duplicates:
+```
+> muka -i
+
+The following are duplicates:
+1) /tmp/file1.txt
+2) /tmp/file2.md
+Which file do you wish to remove? [1/2] >
 ```
 
 ### Building

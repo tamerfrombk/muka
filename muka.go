@@ -137,25 +137,38 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 	}
 }
 
+func printDuplicates(duplicates []DuplicateFile) {
+	for _, duplicate := range duplicates {
+		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicate.AbsolutePath, duplicate.Original.AbsolutePath)
+	}
+}
+
 func main() {
 
-	directoryPtr := flag.String("dir", ".", "the directory to search")
+	directoryPtr := flag.String("d", ".", "the directory to search")
+	interactivePtr := flag.Bool("i", false, "interactive mode to remove duplicates")
 
 	flag.Parse()
 
-	fmt.Printf("Processing directory '%s'.\n", *directoryPtr)
+	var directoryToSearch string
+	if *directoryPtr == "." {
+		directoryToSearch, _ = os.Getwd()
+	} else {
+		directoryToSearch = *directoryPtr
+	}
 
-	fileHashes, err := getFileHashes(*directoryPtr)
+	fileHashes, err := getFileHashes(directoryToSearch)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", *directoryPtr, err.Error())
 		os.Exit(1)
 	}
 
-	duplicates := FindDuplicateFiles(fileHashes)
-	reader := bufio.NewReader(os.Stdin)
-	for _, duplicate := range duplicates {
-		promptToDelete(reader, duplicate)
+	if duplicates := FindDuplicateFiles(fileHashes); *interactivePtr {
+		reader := bufio.NewReader(os.Stdin)
+		for _, duplicate := range duplicates {
+			promptToDelete(reader, duplicate)
+		}
+	} else {
+		printDuplicates(duplicates)
 	}
-
-	fmt.Println("Done.")
 }
