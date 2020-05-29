@@ -81,7 +81,7 @@ Which file(s) do you wish to remove? [1/2] > 1
 
 This will install `muka` to your `GOBIN` directory.
 
-`go install muka.go`
+`go install muka.go deleter.go duplicatefilecache.go`
 
 Alternatively, you can move the `muka` executable after building to a directory of your choice.
 
