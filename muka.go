@@ -28,12 +28,6 @@ type DuplicateFileCache struct {
 	duplicates     []DuplicateFile
 }
 
-// DuplicateFile holds original and duplicate FileHashes
-type DuplicateFile struct {
-	Original   FileHash
-	Duplicates []FileHash
-}
-
 // NewCache DuplicateFileCache constructor
 func NewCache() DuplicateFileCache {
 
@@ -76,11 +70,18 @@ func (cache *DuplicateFileCache) GetDuplicates() []DuplicateFile {
 	return cache.duplicates
 }
 
+// DuplicateFile holds original and duplicate FileHashes
+type DuplicateFile struct {
+	Original   FileHash
+	Duplicates []FileHash
+}
+
 // Args holds the parsed program arguments
 type Args struct {
 	OriginalDirectory string
 	DirectoryToSearch string
 	IsInteractive     bool
+	IsForce           bool
 }
 
 func getFileHashes(dir string) ([]FileHash, error) {
@@ -164,7 +165,7 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile) {
 
 	for done := false; !done; {
 		printDuplicate(dup)
-		fmt.Print("Which file do you wish to remove? [1/2] > ")
+		fmt.Print("Which file(s) do you wish to remove? [1/2] > ")
 
 		line, _ := reader.ReadString('\n')
 		if line == "\n" {
@@ -212,6 +213,7 @@ func printDuplicates(duplicates []DuplicateFile) {
 func parseArgs() Args {
 	directoryPtr := flag.String("d", ".", "the directory to search")
 	interactivePtr := flag.Bool("i", false, "enable interactive mode to remove duplicates")
+	forcePtr := flag.Bool("f", false, "remove duplicates without prompting")
 
 	flag.Parse()
 
@@ -226,6 +228,19 @@ func parseArgs() Args {
 		OriginalDirectory: *directoryPtr,
 		DirectoryToSearch: directoryToSearch,
 		IsInteractive:     *interactivePtr,
+		IsForce:           *forcePtr,
+	}
+}
+
+func forceDelete(duplicates []DuplicateFile) {
+	for _, dup := range duplicates {
+		if len(dup.Duplicates) == 0 {
+			continue
+		}
+
+		for _, f := range dup.Duplicates {
+			deleteFile(f.AbsolutePath)
+		}
 	}
 }
 
@@ -239,7 +254,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if duplicates := FindDuplicateFiles(fileHashes); args.IsInteractive {
+	if duplicates := FindDuplicateFiles(fileHashes); args.IsForce {
+		forceDelete(duplicates)
+	} else if args.IsInteractive {
 		reader := bufio.NewReader(os.Stdin)
 		for _, duplicate := range duplicates {
 			promptToDelete(reader, duplicate)

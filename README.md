@@ -39,6 +39,16 @@ The following are duplicates:
 Which file do you wish to remove? [1/2] >
 ```
 
+Remove duplicates automatically without prompting:
+
+__Note__: When a file has multiple duplicates, this option will always remove the multiple duplicates over the "original". In the case of a file having a single duplicate, one of them is arbitrarily chosen to be removed.
+```
+> muka -f
+
+'/tmp/file2.md' was removed.
+'/tmp/file3.foo' was removed.
+```
+
 ### Building
 
 `go build muka.go`
