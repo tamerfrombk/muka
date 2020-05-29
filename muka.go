@@ -89,8 +89,8 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile, deleter Deleter) {
 	}
 
 	for done := false; !done; {
-		printDuplicate(dup)
-		fmt.Print("Which file(s) do you wish to remove? [1/2] > ")
+		fmt.Println(dup)
+		fmt.Print("Which file(s) do you wish to remove? [o/d/s] > ")
 
 		line, _ := reader.ReadString('\n')
 		if line == "\n" {
@@ -99,14 +99,17 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile, deleter Deleter) {
 
 		answer := line[0]
 		switch answer {
-		case '1':
+		case 'd':
 			for _, d := range dup.Duplicates {
 				deleter.Delete(d.AbsolutePath)
 			}
 			done = true
 			break
-		case '2':
+		case 'o':
 			deleter.Delete(dup.Original.AbsolutePath)
+			done = true
+			break
+		case 's':
 			done = true
 			break
 		default:
@@ -116,22 +119,11 @@ func promptToDelete(reader *bufio.Reader, dup DuplicateFile, deleter Deleter) {
 	}
 }
 
-func printDuplicate(duplicate DuplicateFile) {
-	size := len(duplicate.Duplicates)
-	if size == 0 {
-		return
-	}
-
-	if size == 1 {
-		fmt.Printf("'%s' is a duplicate of '%s'.\n", duplicate.Duplicates[0], duplicate.Original.AbsolutePath)
-	} else {
-		fmt.Printf("'%s' are duplicates of '%s'.\n", duplicate.Duplicates, duplicate.Original.AbsolutePath)
-	}
-}
-
 func printDuplicates(duplicates []DuplicateFile) {
 	for _, duplicate := range duplicates {
-		printDuplicate(duplicate)
+		if len(duplicate.Duplicates) > 0 {
+			fmt.Println(duplicate)
+		}
 	}
 }
 

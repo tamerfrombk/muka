@@ -1,5 +1,10 @@
 package main
 
+import (
+	"strings"
+	"fmt"
+)
+
 // FileHash defines the file hash
 type FileHash struct {
 	AbsolutePath string
@@ -15,6 +20,27 @@ func (hash FileHash) String() string {
 type DuplicateFile struct {
 	Original   FileHash
 	Duplicates []FileHash
+}
+
+func (duplicate DuplicateFile) String() string {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "Original: %s\n", duplicate.Original)
+	dupLength := len(duplicate.Duplicates)
+	if dupLength == 0 {
+		return b.String()
+	}
+
+	b.WriteString("Duplicates: [ ")
+	for i := 0; i < dupLength - 1; i++ {
+		b.WriteString(duplicate.Duplicates[i].String())
+		b.WriteString(", ")
+	}
+
+	b.WriteString(duplicate.Duplicates[dupLength - 1].String())
+	b.WriteString(" ]\n")
+
+	return b.String()
 }
 
 type duplicateFileCache struct {
