@@ -84,22 +84,22 @@ func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 	return cache.GetDuplicates()
 }
 
-func promptToDelete(reader *bufio.Reader, dup DuplicateFile, deleter Deleter) {
+func promptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) {
 	if len(dup.Duplicates) == 0 {
 		return
 	}
 
+	bufReader := bufio.NewReader(reader)
 	for done := false; !done; {
-		fmt.Println(dup)
-		fmt.Print("Which file(s) do you wish to remove? [o/d/s] > ")
+		fmt.Fprintf(writer, "%s\n", dup)
+		fmt.Fprintf(writer, "Which file(s) do you wish to remove? [o/d/s] > ")
 
-		line, _ := reader.ReadString('\n')
+		line, _ := bufReader.ReadString('\n')
 		if line == "\n" {
 			continue
 		}
 
-		answer := line[0]
-		switch answer {
+		switch answer := line[0]; answer {
 		case 'd':
 			for _, d := range dup.Duplicates {
 				deleter.Delete(d.AbsolutePath)
@@ -178,9 +178,8 @@ func main() {
 	if duplicates := FindDuplicateFiles(fileHashes); args.IsForce {
 		forceDelete(duplicates, deleter)
 	} else if args.IsInteractive {
-		reader := bufio.NewReader(os.Stdin)
 		for _, duplicate := range duplicates {
-			promptToDelete(reader, duplicate, deleter)
+			promptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
 		}
 	} else {
 		printDuplicates(duplicates)
