@@ -20,7 +20,8 @@ type Args struct {
 	IsDryRun          bool
 }
 
-func getFileHashes(dir string) ([]FileHash, error) {
+// CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
+func CollectFiles(dir string) ([]FileHash, error) {
 	var files []FileHash
 	dir = filepath.Clean(dir)
 	err := filepath.Walk(dir, func(file string, info os.FileInfo, err error) error {
@@ -167,7 +168,7 @@ func main() {
 
 	args := parseArgs()
 
-	fileHashes, err := getFileHashes(args.DirectoryToSearch)
+	fileHashes, err := CollectFiles(args.DirectoryToSearch)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", args.OriginalDirectory, err.Error())
 		os.Exit(1)
