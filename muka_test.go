@@ -363,11 +363,11 @@ func TestPromptNoDuplicatesDoesNotPrintAnything(t *testing.T) {
 	promptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if strings.Count(writer.String(), duplicates[0].String()) != 0 {
-		t.Error("Duplicate should be displayed.")
+		t.Error("Duplicate should not be displayed.")
 	}
 
 	if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 0 {
-		t.Error("Incorrect prompt.")
+		t.Error("No prompt should be displayed.")
 	}
 }
 
