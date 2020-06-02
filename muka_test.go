@@ -370,3 +370,68 @@ func TestPromptNoDuplicatesDoesNotPrintAnything(t *testing.T) {
 		t.Error("Incorrect prompt.")
 	}
 }
+
+func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
+	dir, err := createTestingDirectory(testingDirOptions{
+		CreateChildrenDirs: true,
+		CreateFiles:        true,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	fileHashes, err := CollectFiles(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	duplicates := FindDuplicateFiles(fileHashes)
+
+	deleter := MakeDeleter(false)
+	forceDelete(duplicates, deleter)
+
+	if !fileExists(duplicates[0].Original.AbsolutePath) {
+		t.Error("The file was not supposed to be deleted.")
+	}
+
+	for _, d := range duplicates[0].Duplicates {
+		if fileExists(d.AbsolutePath) {
+			t.Error("The file was supposed to be deleted.")
+		}
+	}
+}
+
+func TestForceDeleteWithNoDuplicatesDoesNothing(t *testing.T) {
+	dir, err := createTestingDirectory(testingDirOptions{
+		CreateChildrenDirs: true,
+		CreateFiles:        true,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	fileHashes, err := CollectFiles(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	duplicates := FindDuplicateFiles(fileHashes)
+	duplicates[0].Duplicates = make([]FileHash, 0)
+
+	deleter := MakeDeleter(false)
+	forceDelete(duplicates, deleter)
+
+	if !fileExists(duplicates[0].Original.AbsolutePath) {
+		t.Error("The file was not supposed to be deleted.")
+	}
+
+	for _, d := range duplicates[0].Duplicates {
+		if fileExists(d.AbsolutePath) {
+			t.Error("The file was supposed to be deleted.")
+		}
+	}
+}

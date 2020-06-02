@@ -154,10 +154,6 @@ func parseArgs() Args {
 
 func forceDelete(duplicates []DuplicateFile, deleter Deleter) {
 	for _, dup := range duplicates {
-		if len(dup.Duplicates) == 0 {
-			continue
-		}
-
 		for _, f := range dup.Duplicates {
 			deleter.Delete(f.AbsolutePath)
 		}
