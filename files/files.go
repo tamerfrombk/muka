@@ -52,8 +52,7 @@ func (duplicate DuplicateFile) String() string {
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
 func CollectFiles(dir string) ([]FileHash, error) {
 	var files []FileHash
-	dir = filepath.Clean(dir)
-	err := filepath.Walk(dir, func(file string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Clean(dir), func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -62,11 +61,14 @@ func CollectFiles(dir string) ([]FileHash, error) {
 			return nil
 		}
 
-		absolutePath, _ := filepath.Abs(file)
-		cleanPath := filepath.ToSlash(absolutePath)
-		hash, err := hashFile(cleanPath)
+		absolutePath, err := filepath.Abs(file)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "'%s' could not be hashed because '%s'.\n", cleanPath, err.Error())
+			return err
+		}
+
+		hash, err := hashFile(absolutePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "'%s' could not be hashed because '%s'.\n", absolutePath, err.Error())
 			return nil
 		}
 
@@ -96,7 +98,7 @@ func hashFile(filePath string) (FileHash, error) {
 
 	fileHash := FileHash{
 		AbsolutePath: filePath,
-		Hash:         hex.EncodeToString(hasher.Sum(nil)),
+		Hash:         hex.EncodeToString(hasher.Sum([]byte{})),
 	}
 
 	return fileHash, nil
