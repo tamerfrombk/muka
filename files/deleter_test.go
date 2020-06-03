@@ -1,4 +1,4 @@
-package main
+package files
 
 import (
 	"io/ioutil"
@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func fileExists(fileName string) bool {
+func FileExists(fileName string) bool {
 	info, err := os.Stat(fileName)
 	if os.IsNotExist(err) {
 		return false
@@ -27,7 +27,7 @@ func TestMakeDeleterOnDryRunShouldKeepFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !fileExists(f.Name()) {
+	if !FileExists(f.Name()) {
 		t.Error("Dry run should not delete files.")
 	}
 }
@@ -44,7 +44,7 @@ func TestMakeDeleterOnWithoutDryRunShouldRemoveFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if fileExists(f.Name()) {
+	if FileExists(f.Name()) {
 		t.Error("The file should have been deleted.")
 	}
 

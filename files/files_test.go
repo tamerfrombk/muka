@@ -1,4 +1,4 @@
-package main
+package files
 
 import (
 	"io/ioutil"
@@ -177,7 +177,7 @@ func TestPromptToDeleteOriginal(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("o\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
 		t.Error("Duplicate should be displayed.")
@@ -187,12 +187,12 @@ func TestPromptToDeleteOriginal(t *testing.T) {
 		t.Error("Incorrect prompt.")
 	}
 
-	if fileExists(duplicates[0].Original.AbsolutePath) {
+	if FileExists(duplicates[0].Original.AbsolutePath) {
 		t.Error("The file was supposed to be deleted.")
 	}
 
 	for _, d := range duplicates[0].Duplicates {
-		if !fileExists(d.AbsolutePath) {
+		if !FileExists(d.AbsolutePath) {
 			t.Error("The file was not supposed to be deleted.")
 		}
 	}
@@ -219,7 +219,7 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("d\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
 		t.Error("Duplicate should be displayed.")
@@ -229,12 +229,12 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 		t.Error("Incorrect prompt.")
 	}
 
-	if !fileExists(duplicates[0].Original.AbsolutePath) {
+	if !FileExists(duplicates[0].Original.AbsolutePath) {
 		t.Error("The file was not supposed to be deleted.")
 	}
 
 	for _, d := range duplicates[0].Duplicates {
-		if fileExists(d.AbsolutePath) {
+		if FileExists(d.AbsolutePath) {
 			t.Error("The file was supposed to be deleted.")
 		}
 	}
@@ -261,7 +261,7 @@ func TestPromptSkip(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("s\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
 		t.Error("Duplicate should be displayed.")
@@ -271,12 +271,12 @@ func TestPromptSkip(t *testing.T) {
 		t.Error("Incorrect prompt.")
 	}
 
-	if !fileExists(duplicates[0].Original.AbsolutePath) {
+	if !FileExists(duplicates[0].Original.AbsolutePath) {
 		t.Error("The file was not supposed to be deleted.")
 	}
 
 	for _, d := range duplicates[0].Duplicates {
-		if !fileExists(d.AbsolutePath) {
+		if !FileExists(d.AbsolutePath) {
 			t.Error("The file was not supposed to be deleted.")
 		}
 	}
@@ -303,7 +303,7 @@ func TestPromptInvalidResponseContinues(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("x\no\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if strings.Count(writer.String(), duplicates[0].String()) != 2 {
 		t.Error("Duplicate should be displayed.")
@@ -335,7 +335,7 @@ func TestPromptEmptyResponseContinues(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("\no\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if strings.Count(writer.String(), duplicates[0].String()) != 2 {
 		t.Error("Duplicate should be displayed.")
@@ -348,7 +348,7 @@ func TestPromptEmptyResponseContinues(t *testing.T) {
 
 func TestPromptNoDuplicatesDoesNotPrintAnything(t *testing.T) {
 	duplicates := []DuplicateFile{
-		DuplicateFile{
+		{
 			Original: FileHash{
 				AbsolutePath: "foo.txt",
 				Hash:         "abcd",
@@ -360,7 +360,7 @@ func TestPromptNoDuplicatesDoesNotPrintAnything(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("\no\n")
 	var writer strings.Builder
-	promptToDelete(&writer, reader, deleter, duplicates[0])
+	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if strings.Count(writer.String(), duplicates[0].String()) != 0 {
 		t.Error("Duplicate should not be displayed.")
@@ -390,14 +390,14 @@ func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 	duplicates := FindDuplicateFiles(fileHashes)
 
 	deleter := MakeDeleter(false)
-	forceDelete(duplicates, deleter)
+	ForceDelete(duplicates, deleter)
 
-	if !fileExists(duplicates[0].Original.AbsolutePath) {
+	if !FileExists(duplicates[0].Original.AbsolutePath) {
 		t.Error("The file was not supposed to be deleted.")
 	}
 
 	for _, d := range duplicates[0].Duplicates {
-		if fileExists(d.AbsolutePath) {
+		if FileExists(d.AbsolutePath) {
 			t.Error("The file was supposed to be deleted.")
 		}
 	}
@@ -423,14 +423,14 @@ func TestForceDeleteWithNoDuplicatesDoesNothing(t *testing.T) {
 	duplicates[0].Duplicates = make([]FileHash, 0)
 
 	deleter := MakeDeleter(false)
-	forceDelete(duplicates, deleter)
+	ForceDelete(duplicates, deleter)
 
-	if !fileExists(duplicates[0].Original.AbsolutePath) {
+	if !FileExists(duplicates[0].Original.AbsolutePath) {
 		t.Error("The file was not supposed to be deleted.")
 	}
 
 	for _, d := range duplicates[0].Duplicates {
-		if fileExists(d.AbsolutePath) {
+		if FileExists(d.AbsolutePath) {
 			t.Error("The file was supposed to be deleted.")
 		}
 	}
