@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"muka/files"
 	"os"
 )
@@ -40,13 +40,19 @@ func parseArgs() Args {
 	}
 }
 
+func setupLogger() {
+	log.SetFlags(0)
+}
+
 func main() {
+
+	setupLogger()
 
 	args := parseArgs()
 
 	fileHashes, err := files.CollectFiles(args.DirectoryToSearch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to find files in directory '%s' due to '%s'.\n", args.OriginalDirectory, err.Error())
+		log.Printf("unable to find files in %q: %v", args.OriginalDirectory, err)
 		os.Exit(1)
 	}
 

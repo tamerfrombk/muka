@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,7 +69,7 @@ func CollectFiles(dir string) ([]FileHash, error) {
 
 		hash, err := hashFile(absolutePath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "'%s' could not be hashed because '%s'.\n", absolutePath, err.Error())
+			log.Printf("hashing %q: %v", absolutePath, err)
 			return nil
 		}
 
@@ -116,14 +117,18 @@ func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 }
 
 // PromptToDelete this function interactively prompts the user to delete the duplicate
-func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) {
+func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) error {
 
 	bufReader := bufio.NewReader(reader)
-	for done := false; !done; {
-		fmt.Fprintf(writer, "%s\n", dup)
+	for {
+		fmt.Fprintln(writer, dup)
 		fmt.Fprintf(writer, "Which file(s) do you wish to remove? [o/d/s] > ")
 
-		line, _ := bufReader.ReadString('\n')
+		line, err := bufReader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+
 		if line == "\n" {
 			continue
 		}
@@ -133,17 +138,14 @@ func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup Dup
 			for _, d := range dup.Duplicates {
 				deleter.Delete(d.AbsolutePath)
 			}
-			done = true
-			break
+			return nil
 		case 'o':
 			deleter.Delete(dup.Original.AbsolutePath)
-			done = true
-			break
+			return nil
 		case 's':
-			done = true
-			break
+			return nil
 		default:
-			fmt.Fprintf(os.Stderr, "'%c' is not acceptable answer.\n", answer)
+			log.Printf("%q is not acceptable answer", answer)
 			break
 		}
 	}
