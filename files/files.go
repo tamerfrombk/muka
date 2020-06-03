@@ -115,9 +115,6 @@ func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 
 // PromptToDelete this function interactively prompts the user to delete the duplicate
 func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) {
-	if len(dup.Duplicates) == 0 {
-		return
-	}
 
 	bufReader := bufio.NewReader(reader)
 	for done := false; !done; {
@@ -153,9 +150,7 @@ func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup Dup
 // PrintDuplicates print the duplicate to stdout
 func PrintDuplicates(duplicates []DuplicateFile) {
 	for _, duplicate := range duplicates {
-		if len(duplicate.Duplicates) > 0 {
-			fmt.Println(duplicate)
-		}
+		fmt.Println(duplicate)
 	}
 }
 

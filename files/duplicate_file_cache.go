@@ -45,5 +45,14 @@ func (cache *DuplicateFileCache) Add(hash FileHash) {
 // GetDuplicates retrieves the list of duplicates from the cache
 func (cache *DuplicateFileCache) GetDuplicates() []DuplicateFile {
 
-	return cache.duplicates
+	allDuplicates := cache.duplicates
+
+	nonEmptyDuplicates := make([]DuplicateFile, 0, len(allDuplicates))
+	for _, d := range allDuplicates {
+		if len(d.Duplicates) > 0 {
+			nonEmptyDuplicates = append(nonEmptyDuplicates, d)
+		}
+	}
+
+	return nonEmptyDuplicates
 }

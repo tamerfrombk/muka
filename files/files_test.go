@@ -55,12 +55,8 @@ func TestDuplicateFileWithZeroDuplicates(t *testing.T) {
 	}
 
 	duplicateFiles := FindDuplicateFiles(fileHashes)
-	if len(duplicateFiles) != 1 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles))
-	}
-
-	if len(duplicateFiles[0].Duplicates) != 0 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 0, len(duplicateFiles[0].Duplicates))
+	if len(duplicateFiles) != 0 {
+		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 0, len(duplicateFiles))
 	}
 }
 
@@ -346,31 +342,6 @@ func TestPromptEmptyResponseContinues(t *testing.T) {
 	}
 }
 
-func TestPromptNoDuplicatesDoesNotPrintAnything(t *testing.T) {
-	duplicates := []DuplicateFile{
-		{
-			Original: FileHash{
-				AbsolutePath: "foo.txt",
-				Hash:         "abcd",
-			},
-			Duplicates: make([]FileHash, 0),
-		},
-	}
-
-	deleter := MakeDeleter(false)
-	reader := strings.NewReader("\no\n")
-	var writer strings.Builder
-	PromptToDelete(&writer, reader, deleter, duplicates[0])
-
-	if strings.Count(writer.String(), duplicates[0].String()) != 0 {
-		t.Error("Duplicate should not be displayed.")
-	}
-
-	if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 0 {
-		t.Error("No prompt should be displayed.")
-	}
-}
-
 func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 	dir, err := createTestingDirectory(testingDirOptions{
 		CreateChildrenDirs: true,
@@ -388,39 +359,6 @@ func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 	}
 
 	duplicates := FindDuplicateFiles(fileHashes)
-
-	deleter := MakeDeleter(false)
-	ForceDelete(duplicates, deleter)
-
-	if !FileExists(duplicates[0].Original.AbsolutePath) {
-		t.Error("The file was not supposed to be deleted.")
-	}
-
-	for _, d := range duplicates[0].Duplicates {
-		if FileExists(d.AbsolutePath) {
-			t.Error("The file was supposed to be deleted.")
-		}
-	}
-}
-
-func TestForceDeleteWithNoDuplicatesDoesNothing(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	fileHashes, err := CollectFiles(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	duplicates := FindDuplicateFiles(fileHashes)
-	duplicates[0].Duplicates = make([]FileHash, 0)
 
 	deleter := MakeDeleter(false)
 	ForceDelete(duplicates, deleter)
