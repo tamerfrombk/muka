@@ -278,7 +278,8 @@ func TestPromptSkip(t *testing.T) {
 	}
 }
 
-func TestPromptInvalidResponseContinues(t *testing.T) {
+func TestPromptUnexpectedResponsesContinuePrompting(t *testing.T) {
+
 	dir, err := createTestingDirectory(testingDirOptions{
 		CreateChildrenDirs: true,
 		CreateFiles:        true,
@@ -297,48 +298,23 @@ func TestPromptInvalidResponseContinues(t *testing.T) {
 	duplicates := FindDuplicateFiles(fileHashes)
 
 	deleter := MakeDeleter(false)
-	reader := strings.NewReader("x\no\n")
-	var writer strings.Builder
-	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
-	if strings.Count(writer.String(), duplicates[0].String()) != 2 {
-		t.Error("Duplicate should be displayed.")
+	readers := []*strings.Reader{
+		strings.NewReader("x\no\n"), // invalid response
+		strings.NewReader("\no\n"),  // empty response
 	}
 
-	if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 2 {
-		t.Error("Incorrect prompt.")
-	}
-}
+	for _, reader := range readers {
+		var writer strings.Builder
+		PromptToDelete(&writer, reader, deleter, duplicates[0])
 
-func TestPromptEmptyResponseContinues(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
+		if strings.Count(writer.String(), duplicates[0].String()) != 2 {
+			t.Error("Duplicate should be displayed.")
+		}
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	fileHashes, err := CollectFiles(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	duplicates := FindDuplicateFiles(fileHashes)
-
-	deleter := MakeDeleter(false)
-	reader := strings.NewReader("\no\n")
-	var writer strings.Builder
-	PromptToDelete(&writer, reader, deleter, duplicates[0])
-
-	if strings.Count(writer.String(), duplicates[0].String()) != 2 {
-		t.Error("Duplicate should be displayed.")
-	}
-
-	if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 2 {
-		t.Error("Incorrect prompt.")
+		if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 2 {
+			t.Error("Incorrect prompt.")
+		}
 	}
 }
 
