@@ -1,4 +1,4 @@
-package files
+package muka
 
 import (
 	"bufio"
@@ -52,7 +52,7 @@ func (duplicate DuplicateFile) String() string {
 
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
 func CollectFiles(dir string) ([]FileHash, error) {
-	var files []FileHash
+	var muka []FileHash
 	err := filepath.Walk(filepath.Clean(dir), func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -73,7 +73,7 @@ func CollectFiles(dir string) ([]FileHash, error) {
 			return nil
 		}
 
-		files = append(files, hash)
+		muka = append(muka, hash)
 
 		return nil
 	})
@@ -82,7 +82,7 @@ func CollectFiles(dir string) ([]FileHash, error) {
 		return nil, err
 	}
 
-	return files, nil
+	return muka, nil
 }
 
 func hashFile(filePath string) (FileHash, error) {

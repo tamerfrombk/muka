@@ -81,19 +81,19 @@ Which file(s) do you wish to remove? [o/d/s] > d
 
 ### Building
 
-`go build muka.go`
+`go build main.go`
 
 ### Installing
 
 This will install `muka` to your `GOBIN` directory.
 
-`go install muka.go`
+`go install main.go`
 
 Alternatively, you can move the `muka` executable after building to a directory of your choice.
 
 ### Running the tests
 
-`go test muka/files`
+`go test github.com/tamerfrombk/muka/muka`
 
 ## Limitations
 The following are known limitations of `muka`. Some of these will be built into the program in the future and some may not:

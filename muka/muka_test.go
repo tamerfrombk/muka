@@ -1,4 +1,4 @@
-package files
+package muka
 
 import (
 	"io/ioutil"
@@ -115,13 +115,13 @@ func TestCollectFilesEmptyDirectoryReturnsNoFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	files, err := CollectFiles(dir)
+	muka, err := CollectFiles(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(files) > 0 {
-		t.Error("In an empty directory, no files should be collected.")
+	if len(muka) > 0 {
+		t.Error("In an empty directory, no muka should be collected.")
 	}
 }
 
@@ -136,16 +136,16 @@ func TestCollectFilesHasOnlyFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	files, err := CollectFiles(dir)
+	muka, err := CollectFiles(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(files) == 0 {
-		t.Errorf("Non empty list of files expected.")
+	if len(muka) == 0 {
+		t.Errorf("Non empty list of muka expected.")
 	}
 
-	for _, f := range files {
+	for _, f := range muka {
 		if isDir(f.AbsolutePath) {
 			t.Errorf("No directories should be returned but '%s' is a directory.\n", f.AbsolutePath)
 		}

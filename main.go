@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"log"
-	"muka/files"
+	"github.com/tamerfrombk/muka/muka"
 	"os"
 )
 
@@ -20,7 +20,7 @@ func parseArgs() Args {
 	directoryPtr := flag.String("d", ".", "the directory to search")
 	interactivePtr := flag.Bool("i", false, "enable interactive mode to remove duplicates")
 	forcePtr := flag.Bool("f", false, "remove duplicates without prompting")
-	dryRunPtr := flag.Bool("dryrun", false, "does not actually remove any files")
+	dryRunPtr := flag.Bool("dryrun", false, "does not actually remove any muka")
 
 	flag.Parse()
 
@@ -50,20 +50,20 @@ func main() {
 
 	args := parseArgs()
 
-	fileHashes, err := files.CollectFiles(args.DirectoryToSearch)
+	fileHashes, err := muka.CollectFiles(args.DirectoryToSearch)
 	if err != nil {
-		log.Printf("unable to find files in %q: %v", args.OriginalDirectory, err)
+		log.Printf("unable to find muka in %q: %v", args.OriginalDirectory, err)
 		os.Exit(1)
 	}
 
-	deleter := files.MakeDeleter(args.IsDryRun)
-	if duplicates := files.FindDuplicateFiles(fileHashes); args.IsForce {
-		files.ForceDelete(duplicates, deleter)
+	deleter := muka.MakeDeleter(args.IsDryRun)
+	if duplicates := muka.FindDuplicateFiles(fileHashes); args.IsForce {
+		muka.ForceDelete(duplicates, deleter)
 	} else if args.IsInteractive {
 		for _, duplicate := range duplicates {
-			files.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
+			muka.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
 		}
 	} else {
-		files.PrintDuplicates(duplicates)
+		muka.PrintDuplicates(duplicates)
 	}
 }

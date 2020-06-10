@@ -1,6 +1,6 @@
-package files
+package muka
 
-// DuplicateFileCache holds a cache of possible duplicate files
+// DuplicateFileCache holds a cache of possible duplicate muka
 type DuplicateFileCache struct {
 	fileHashByHash map[string]FileHash
 	duplicates     []DuplicateFile

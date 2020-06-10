@@ -1,4 +1,4 @@
-package files
+package muka
 
 import (
 	"io/ioutil"
@@ -28,7 +28,7 @@ func TestMakeDeleterOnDryRunShouldKeepFile(t *testing.T) {
 	}
 
 	if !FileExists(f.Name()) {
-		t.Error("Dry run should not delete files.")
+		t.Error("Dry run should not delete muka.")
 	}
 }
 
