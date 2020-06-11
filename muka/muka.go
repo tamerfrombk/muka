@@ -136,12 +136,17 @@ func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup Dup
 		switch answer := line[0]; answer {
 		case 'd':
 			for _, d := range dup.Duplicates {
-				deleter.Delete(d.AbsolutePath)
+				if err := deleter.Delete(d.AbsolutePath); err != nil {
+					log.Printf("unable to delete %q: %v", d.AbsolutePath, err)
+				}
 			}
 			return nil
 		case 'o':
-			deleter.Delete(dup.Original.AbsolutePath)
-			return nil
+			err := deleter.Delete(dup.Original.AbsolutePath)
+			if err != nil {
+				log.Printf("unable to delete %q: %v", dup.Original.AbsolutePath, err)
+			}
+			return err
 		case 's':
 			return nil
 		default:
@@ -162,7 +167,9 @@ func PrintDuplicates(duplicates []DuplicateFile) {
 func ForceDelete(duplicates []DuplicateFile, deleter Deleter) {
 	for _, dup := range duplicates {
 		for _, f := range dup.Duplicates {
-			deleter.Delete(f.AbsolutePath)
+			if err := deleter.Delete(f.AbsolutePath); err != nil {
+				log.Printf("unable to delete %q: %v", f.AbsolutePath, err)
+			}
 		}
 	}
 }

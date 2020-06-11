@@ -16,7 +16,7 @@ type args struct {
 	IsDryRun          bool
 }
 
-func parseArgs(mainArgs []string) args {
+func parseArgs(mainArgs []string) (args, error) {
 	mukaFlags := flag.NewFlagSet("muka", flag.ExitOnError)
 
 	directoryPtr := mukaFlags.String("d", ".", "the directory to search")
@@ -27,8 +27,12 @@ func parseArgs(mainArgs []string) args {
 	mukaFlags.Parse(mainArgs)
 
 	var directoryToSearch string
+	var err error
 	if *directoryPtr == "." {
-		directoryToSearch, _ = os.Getwd()
+		directoryToSearch, err = os.Getwd()
+		if err != nil {
+			return args{}, err
+		}
 	} else {
 		directoryToSearch = *directoryPtr
 	}
@@ -39,7 +43,7 @@ func parseArgs(mainArgs []string) args {
 		IsInteractive:     *interactivePtr,
 		IsForce:           *forcePtr,
 		IsDryRun:          *dryRunPtr,
-	}
+	}, nil
 }
 
 func setupLogger() {
@@ -52,7 +56,11 @@ func Run(mainArgs []string) int {
 
 	setupLogger()
 
-	args := parseArgs(mainArgs)
+	args, err := parseArgs(mainArgs)
+	if err != nil {
+		log.Printf("unable to parse arguments: %v", err)
+		return 1
+	}
 
 	fileHashes, err := muka.CollectFiles(args.DirectoryToSearch)
 	if err != nil {
