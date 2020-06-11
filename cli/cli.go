@@ -9,11 +9,11 @@ import (
 )
 
 type args struct {
-	OriginalDirectory string
-	DirectoryToSearch string
-	IsInteractive     bool
-	IsForce           bool
-	IsDryRun          bool
+	OriginalDirectory  string
+	IsInteractive      bool
+	IsForce            bool
+	IsDryRun           bool
+	FileCollectOptions muka.FileCollectionOptions
 }
 
 func parseArgs(mainArgs []string) (args, error) {
@@ -23,6 +23,7 @@ func parseArgs(mainArgs []string) (args, error) {
 	interactivePtr := mukaFlags.Bool("i", false, "enable interactive mode to remove duplicates")
 	forcePtr := mukaFlags.Bool("f", false, "remove duplicates without prompting")
 	dryRunPtr := mukaFlags.Bool("dryrun", false, "do not actually remove any files")
+	excludeDirsPtr := mukaFlags.String("X", "", "exclude the provided directories from searching (regex supported)")
 
 	mukaFlags.Parse(mainArgs)
 
@@ -37,12 +38,20 @@ func parseArgs(mainArgs []string) (args, error) {
 		directoryToSearch = *directoryPtr
 	}
 
+	excludeDirs, err := muka.CompileSpaceSeparatedPatterns(*excludeDirsPtr)
+	if err != nil {
+		return args{}, nil
+	}
+
 	return args{
 		OriginalDirectory: *directoryPtr,
-		DirectoryToSearch: directoryToSearch,
 		IsInteractive:     *interactivePtr,
 		IsForce:           *forcePtr,
 		IsDryRun:          *dryRunPtr,
+		FileCollectOptions: muka.FileCollectionOptions{
+			DirectoryToSearch: directoryToSearch,
+			ExcludeDirs:       excludeDirs,
+		},
 	}, nil
 }
 
@@ -62,7 +71,7 @@ func Run(mainArgs []string) int {
 		return 1
 	}
 
-	fileHashes, err := muka.CollectFiles(args.DirectoryToSearch)
+	fileHashes, err := muka.CollectFiles(args.FileCollectOptions)
 	if err != nil {
 		log.Printf("unable to find files in %q: %v", args.OriginalDirectory, err)
 		return 1

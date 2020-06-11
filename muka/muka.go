@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -50,15 +51,26 @@ func (duplicate DuplicateFile) String() string {
 	return b.String()
 }
 
+// FileCollectionOptions options used by CollectFiles
+type FileCollectionOptions struct {
+	DirectoryToSearch string
+	ExcludeDirs       []*regexp.Regexp
+}
+
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
-func CollectFiles(dir string) ([]FileHash, error) {
+func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 	var files []FileHash
-	err := filepath.Walk(filepath.Clean(dir), func(file string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Clean(options.DirectoryToSearch), func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		if info.IsDir() {
+			for _, excludeDirPattern := range options.ExcludeDirs {
+				if excludeDirPattern.MatchString(info.Name()) {
+					return filepath.SkipDir
+				}
+			}
 			return nil
 		}
 
@@ -172,4 +184,28 @@ func ForceDelete(duplicates []DuplicateFile, deleter Deleter) {
 			}
 		}
 	}
+}
+
+// CompileSpaceSeparatedPatterns takes a string of space separated regexes
+// and compiles them into regex state machines.
+// If the input is empty, an empty array is returned with no errors
+// If any error occurs while compiling one of the patterns, that error
+// is returned along with whatever patterns where previously compiled.
+func CompileSpaceSeparatedPatterns(s string) ([]*regexp.Regexp, error) {
+
+	var patterns []*regexp.Regexp
+	if len(s) == 0 {
+		return patterns, nil
+	}
+
+	tokens := strings.Split(s, " ")
+	for _, token := range tokens {
+		pattern, err := regexp.Compile(token)
+		if err != nil {
+			return patterns, err
+		}
+		patterns = append(patterns, pattern)
+	}
+
+	return patterns, nil
 }

@@ -8,7 +8,7 @@ By default, `muka` will recursively search the current working directory and lis
 
 To delete duplicate files, `muka` supports interactive and automatic behavior; use the `-i` flag to interactively delete duplicates or `-f` to have `muka` delete them for you without intervention. Dry run mode can be combined with both of these methods for additional data safety.
 
-__Note__: When a file has multiple duplicates, the `-f` option will always remove the duplicates over the original. This is done to maximize the amount of freed space. In the case of a file having a single duplicate, the duplicate is still removed.
+**Note**: When a file has multiple duplicates, the `-f` option will always remove the duplicates over the original. This is done to maximize the amount of freed space. In the case of a file having a single duplicate, the duplicate is still removed.
 
 Please exercise caution when deleting files -- especially using `-f`; once a file is deleted, there is no easy way of getting it back.
 
@@ -21,9 +21,10 @@ To review the full help menu for `muka`, use the `-h` or `--help` flags.
 ## Examples
 
 List all duplicate files in the current working directory:
+
 ```
 > cd /tmp
-> muka 
+> muka
 
 Original: /tmp/file1.txt
 Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
@@ -31,6 +32,7 @@ Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
 ```
 
 List all duplicate files in a specific directory:
+
 ```
 > muka -d /tmp
 
@@ -40,6 +42,7 @@ Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
 ```
 
 Interactively remove duplicates (`o` is for `original`, `d` is for `duplicates`, and `s` is to skip the current selection):
+
 ```
 > muka -i
 
@@ -50,6 +53,7 @@ Which file(s) do you wish to remove? [o/d/s] >
 ```
 
 Remove duplicates automatically without prompting:
+
 ```
 > muka -f
 
@@ -60,6 +64,7 @@ Remove duplicates automatically without prompting:
 `muka` also has a dry run option that can be combined with interactively or automatically removing files:
 
 Automatic dry run:
+
 ```
 > muka -f --dryrun
 
@@ -68,6 +73,7 @@ Automatic dry run:
 ```
 
 Interactive dry run:
+
 ```
 > muka -i --dryrun
 
@@ -77,6 +83,17 @@ Duplicates: [ /tmp/file2.md, /tmp/file3.foo ]
 Which file(s) do you wish to remove? [o/d/s] > d
 '/tmp/file2.md' would be removed.
 '/tmp/file3.foo' would be removed.
+```
+
+Exclude directories from being searched (regex supported):
+
+```
+# Excludes the '.git' directory from being searched
+> muka -X .git
+
+# To exclude multiple directories, you must wrap them in single quotes
+# Excludes directories matching the 'foo.*' pattern or the '^bar' pattern
+> muka -X 'foo.* ^bar'
 ```
 
 ### Building
@@ -96,12 +113,13 @@ Alternatively, you can move the `muka` executable after building to a directory 
 `go test github.com/tamerfrombk/muka/muka`
 
 ## Limitations
+
 The following are known limitations of `muka`. Some of these will be built into the program in the future and some may not:
 
 1. Specifying a recursion depth
-    - As of now, `muka` does a full recursive search of the specified directory.
+   - As of now, `muka` does a full recursive search of the specified directory.
 2. File filtering
-    - As of now, `muka` looks for duplicates in all files under the specified directory.
+   - As of now, `muka` looks for duplicates in all files under the specified directory.
 
 ## Contributing
 

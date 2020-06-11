@@ -115,7 +115,9 @@ func TestCollectFilesEmptyDirectoryReturnsNoFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	muka, err := CollectFiles(dir)
+	muka, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +138,9 @@ func TestCollectFilesHasOnlyFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	muka, err := CollectFiles(dir)
+	muka, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +167,9 @@ func TestPromptToDeleteOriginal(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	fileHashes, err := CollectFiles(dir)
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +211,9 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	fileHashes, err := CollectFiles(dir)
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +255,9 @@ func TestPromptSkip(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	fileHashes, err := CollectFiles(dir)
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +300,9 @@ func TestPromptUnexpectedResponsesContinuePrompting(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	fileHashes, err := CollectFiles(dir)
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +341,9 @@ func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	fileHashes, err := CollectFiles(dir)
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,4 +362,61 @@ func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 			t.Error("The file was supposed to be deleted.")
 		}
 	}
+}
+
+func TestCompileSpaceSeparatedPatterns(t *testing.T) {
+	inputs := map[string]int{
+		"a":   1,
+		"a b": 2,
+		"":    0,
+	}
+
+	for input, patternsLength := range inputs {
+		patterns, err := CompileSpaceSeparatedPatterns(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(patterns) != patternsLength {
+			t.Errorf("mismatched lengths for %q - expected %d but got %d", input, patternsLength, len(patterns))
+		}
+	}
+}
+
+func TestExcludeDirectories(t *testing.T) {
+	dir, err := ioutil.TempDir("", "TestIgnore")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	ignoreDir, err := ioutil.TempDir(dir, ".ignoreMe")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := ioutil.TempFile(ignoreDir, "should-not-be-picked-up"); err != nil {
+		t.Fatal(err)
+	}
+
+	excludeDirs, err := CompileSpaceSeparatedPatterns(".ignoreMe")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+		ExcludeDirs:       excludeDirs,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, f := range fileHashes {
+		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
+			t.Errorf("%q should be excluded", "should-not-be-picked-up")
+		}
+	}
+
 }
