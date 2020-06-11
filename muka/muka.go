@@ -55,6 +55,7 @@ func (duplicate DuplicateFile) String() string {
 type FileCollectionOptions struct {
 	DirectoryToSearch string
 	ExcludeDirs       []*regexp.Regexp
+	ExcludeFiles      []*regexp.Regexp
 }
 
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
@@ -72,6 +73,12 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 				}
 			}
 			return nil
+		}
+
+		for _, excludeFilePattern := range options.ExcludeFiles {
+			if excludeFilePattern.MatchString(info.Name()) {
+				return nil
+			}
 		}
 
 		absolutePath, err := filepath.Abs(file)

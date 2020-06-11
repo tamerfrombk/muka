@@ -420,3 +420,36 @@ func TestExcludeDirectories(t *testing.T) {
 	}
 
 }
+
+func TestExcludeFiles(t *testing.T) {
+	dir, err := ioutil.TempDir("", "TestIgnore")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if _, err := ioutil.TempFile(dir, "should-not-be-picked-up"); err != nil {
+		t.Fatal(err)
+	}
+
+	excludeFiles, err := CompileSpaceSeparatedPatterns("should-not-be-picked-up")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fileHashes, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+		ExcludeFiles:      excludeFiles,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, f := range fileHashes {
+		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
+			t.Errorf("%q should be excluded", "should-not-be-picked-up")
+		}
+	}
+
+}

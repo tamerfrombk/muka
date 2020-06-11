@@ -23,7 +23,8 @@ func parseArgs(mainArgs []string) (args, error) {
 	interactivePtr := mukaFlags.Bool("i", false, "enable interactive mode to remove duplicates")
 	forcePtr := mukaFlags.Bool("f", false, "remove duplicates without prompting")
 	dryRunPtr := mukaFlags.Bool("dryrun", false, "do not actually remove any files")
-	excludeDirsPtr := mukaFlags.String("X", "", "exclude the provided directories from searching (regex supported)")
+	excludeDirsPtr := mukaFlags.String("X", "", "exclude the provided directories from consideration (regex supported)")
+	excludeFilesPtr := mukaFlags.String("x", "", "exclude the provided files from consideration (regex supported)")
 
 	mukaFlags.Parse(mainArgs)
 
@@ -43,6 +44,11 @@ func parseArgs(mainArgs []string) (args, error) {
 		return args{}, nil
 	}
 
+	excludeFiles, err := muka.CompileSpaceSeparatedPatterns(*excludeFilesPtr)
+	if err != nil {
+		return args{}, nil
+	}
+
 	return args{
 		OriginalDirectory: *directoryPtr,
 		IsInteractive:     *interactivePtr,
@@ -51,6 +57,7 @@ func parseArgs(mainArgs []string) (args, error) {
 		FileCollectOptions: muka.FileCollectionOptions{
 			DirectoryToSearch: directoryToSearch,
 			ExcludeDirs:       excludeDirs,
+			ExcludeFiles:      excludeFiles,
 		},
 	}, nil
 }

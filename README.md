@@ -85,15 +85,26 @@ Which file(s) do you wish to remove? [o/d/s] > d
 '/tmp/file3.foo' would be removed.
 ```
 
-Exclude directories from being searched (regex supported):
+Exclude directories from consideration (regex supported):
 
 ```
-# Excludes the '.git' directory from being searched
+# Excludes the '.git' directory
 > muka -X .git
 
 # To exclude multiple directories, you must wrap them in single quotes
 # Excludes directories matching the 'foo.*' pattern or the '^bar' pattern
 > muka -X 'foo.* ^bar'
+```
+
+Exclude files from consideration (regex supported):
+
+```
+# Excludes files ending in '.txt' from consideration
+> muka -x '.txt'
+
+# To exclude multiple files, you must wrap them in single quotes
+# Excludes files matching the 'foo.*' pattern or the '^bar' pattern
+> muka -x 'foo.* ^bar'
 ```
 
 ### Building
@@ -118,8 +129,6 @@ The following are known limitations of `muka`. Some of these will be built into 
 
 1. Specifying a recursion depth
    - As of now, `muka` does a full recursive search of the specified directory.
-2. File filtering
-   - As of now, `muka` looks for duplicates in all files under the specified directory.
 
 ## Contributing
 
