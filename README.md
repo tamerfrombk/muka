@@ -12,6 +12,8 @@ To delete duplicate files, `muka` supports interactive and automatic behavior; u
 
 Please exercise caution when deleting files -- especially using `-f`; once a file is deleted, there is no easy way of getting it back.
 
+Finally, `muka` supports excluding files (`-x [PATTERNS]`) and directories (`-X [PATTERNS]`) from consideration. By default, `muka` does not exclude anything from consideration and will scan all files and subdirectories in a given directory.
+
 ## Getting Started
 
 `muka` uses the Go standard library and build tools.
