@@ -272,8 +272,10 @@ func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedF
 	sumOfFileSizes := sum(fileHashes)
 
 	sumOfDuplicateSizes := int64(0)
+	sumOfDuplicateCount := 0
 	for _, f := range duplicates {
 		sumOfDuplicateSizes += sum(f.Duplicates)
+		sumOfDuplicateCount += len(f.Duplicates)
 	}
 
 	sumOfDeletedFileSizes := sum(deletedFiles)
@@ -281,9 +283,9 @@ func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedF
 	return Report{
 		CollectedFileCount:    len(fileHashes),
 		CollectedFileSizeInKB: float64(sumOfFileSizes) / 1000.0,
-		DuplicateFileCount:    len(duplicates),
+		DuplicateFileCount:    sumOfDuplicateCount,
 		DuplicateFileSizeInKB: float64(sumOfDuplicateSizes) / 1000.0,
-		DuplicatePercentage:   (float64(len(duplicates)) / float64(len(fileHashes))) * 100,
+		DuplicatePercentage:   (float64(sumOfDuplicateCount) / float64(len(fileHashes))) * 100,
 		DeletedFileCount:      len(deletedFiles),
 		DeletedFileSizeInKB:   float64(sumOfDeletedFileSizes) / 1000.0,
 	}

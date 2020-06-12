@@ -507,8 +507,13 @@ func TestCalculateReport(t *testing.T) {
 		t.Errorf("expected %f but got %f", 0.0, sum)
 	}
 
-	if size := len(duplicates); report.DuplicateFileCount != size {
-		t.Errorf("expected %d but got %d", size, report.DuplicateFileCount)
+	duplicateCount := 0
+	for _, f := range duplicates {
+		duplicateCount += len(f.Duplicates)
+	}
+
+	if report.DuplicateFileCount != duplicateCount {
+		t.Errorf("expected %d but got %d", duplicateCount, report.DuplicateFileCount)
 	}
 
 	sumDuplicates := float64(0.0)
@@ -520,7 +525,7 @@ func TestCalculateReport(t *testing.T) {
 		t.Errorf("expected %f but got %f", sumDuplicates, report.DuplicateFileSizeInKB)
 	}
 
-	if percentage := (float64(len(duplicates)) / float64(len(collectedFiles))) * 100; report.DuplicatePercentage != percentage {
+	if percentage := (float64(duplicateCount) / float64(len(collectedFiles))) * 100; report.DuplicatePercentage != percentage {
 		t.Errorf("expected %f but got %f", percentage, report.DuplicatePercentage)
 	}
 
