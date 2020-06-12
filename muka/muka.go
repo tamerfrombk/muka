@@ -17,6 +17,7 @@ import (
 type FileHash struct {
 	AbsolutePath string
 	Hash         string
+	SizeInBytes  int64
 }
 
 func (hash FileHash) String() string {
@@ -56,6 +57,29 @@ type FileCollectionOptions struct {
 	DirectoryToSearch string
 	ExcludeDirs       []*regexp.Regexp
 	ExcludeFiles      []*regexp.Regexp
+}
+
+// Report reports on program performance
+type Report struct {
+	CollectedFileCount    int
+	CollectedFileSizeInKB float64
+	DuplicateFileCount    int
+	DuplicateFileSizeInKB float64
+	DuplicatePercentage   float64
+	DeletedFileCount      int
+	DeletedFileSizeInKB   float64
+}
+
+func (r Report) String() string {
+
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "Files Scanned: %d (%.2f KB)\n", r.CollectedFileCount, r.CollectedFileSizeInKB)
+	fmt.Fprintf(&b, "Duplicates Found: %d (%.2f KB), %.2f%% of scanned files\n",
+		r.DuplicateFileCount, r.DuplicateFileSizeInKB, r.DuplicatePercentage)
+	fmt.Fprintf(&b, "%d files were deleted saving %.2f KB\n", r.DeletedFileCount, r.DeletedFileSizeInKB)
+
+	return b.String()
 }
 
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
@@ -116,9 +140,15 @@ func hashFile(filePath string) (FileHash, error) {
 		return FileHash{}, err
 	}
 
+	info, err := file.Stat()
+	if err != nil {
+		return FileHash{}, err
+	}
+
 	fileHash := FileHash{
 		AbsolutePath: filePath,
 		Hash:         hex.EncodeToString(hasher.Sum([]byte{})),
+		SizeInBytes:  info.Size(),
 	}
 
 	return fileHash, nil
@@ -136,7 +166,8 @@ func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
 }
 
 // PromptToDelete this function interactively prompts the user to delete the duplicate
-func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) error {
+// and returns any files the user has deleted
+func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup DuplicateFile) ([]FileHash, error) {
 
 	bufReader := bufio.NewReader(reader)
 	for {
@@ -145,7 +176,7 @@ func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup Dup
 
 		line, err := bufReader.ReadString('\n')
 		if err != nil {
-			return err
+			return []FileHash{}, err
 		}
 
 		if line == "\n" {
@@ -154,20 +185,24 @@ func PromptToDelete(writer io.Writer, reader io.Reader, deleter Deleter, dup Dup
 
 		switch answer := line[0]; answer {
 		case 'd':
+			deletedFiles := make([]FileHash, 0, len(dup.Duplicates))
 			for _, d := range dup.Duplicates {
-				if err := deleter.Delete(d.AbsolutePath); err != nil {
+				if err := deleter.Delete(d.AbsolutePath); err == nil {
+					deletedFiles = append(deletedFiles, d)
+				} else {
 					log.Printf("unable to delete %q: %v", d.AbsolutePath, err)
 				}
 			}
-			return nil
+			return deletedFiles, nil
 		case 'o':
-			err := deleter.Delete(dup.Original.AbsolutePath)
-			if err != nil {
+			if err := deleter.Delete(dup.Original.AbsolutePath); err == nil {
+				return []FileHash{dup.Original}, err
+			} else {
 				log.Printf("unable to delete %q: %v", dup.Original.AbsolutePath, err)
+				return []FileHash{}, err
 			}
-			return err
 		case 's':
-			return nil
+			return []FileHash{}, nil
 		default:
 			log.Printf("%q is not acceptable answer", answer)
 			break
@@ -182,15 +217,21 @@ func PrintDuplicates(duplicates []DuplicateFile) {
 	}
 }
 
-// ForceDelete deletes the duplicates without asking for user intervention
-func ForceDelete(duplicates []DuplicateFile, deleter Deleter) {
+// ForceDelete deletes the duplicates without asking for user interventionand returns
+// all of the deleted files
+func ForceDelete(duplicates []DuplicateFile, deleter Deleter) []FileHash {
+	var deletedFiles []FileHash
 	for _, dup := range duplicates {
 		for _, f := range dup.Duplicates {
-			if err := deleter.Delete(f.AbsolutePath); err != nil {
+			if err := deleter.Delete(f.AbsolutePath); err == nil {
+				deletedFiles = append(deletedFiles, f)
+			} else {
 				log.Printf("unable to delete %q: %v", f.AbsolutePath, err)
 			}
 		}
 	}
+
+	return deletedFiles
 }
 
 // CompileSpaceSeparatedPatterns takes a string of space separated regexes
@@ -215,4 +256,35 @@ func CompileSpaceSeparatedPatterns(s string) ([]*regexp.Regexp, error) {
 	}
 
 	return patterns, nil
+}
+
+// CalculateReport Generates a report detailing basic program behavior
+func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedFiles []FileHash) Report {
+
+	sum := func(hashes []FileHash) int64 {
+		sum := int64(0)
+		for _, f := range hashes {
+			sum += f.SizeInBytes
+		}
+		return sum
+	}
+
+	sumOfFileSizes := sum(fileHashes)
+
+	sumOfDuplicateSizes := int64(0)
+	for _, f := range duplicates {
+		sumOfDuplicateSizes += sum(f.Duplicates)
+	}
+
+	sumOfDeletedFileSizes := sum(deletedFiles)
+
+	return Report{
+		CollectedFileCount:    len(fileHashes),
+		CollectedFileSizeInKB: float64(sumOfFileSizes) / 1000.0,
+		DuplicateFileCount:    len(duplicates),
+		DuplicateFileSizeInKB: float64(sumOfDuplicateSizes) / 1000.0,
+		DuplicatePercentage:   (float64(len(duplicates)) / float64(len(fileHashes))) * 100,
+		DeletedFileCount:      len(deletedFiles),
+		DeletedFileSizeInKB:   float64(sumOfDeletedFileSizes) / 1000.0,
+	}
 }

@@ -179,7 +179,15 @@ func TestPromptToDeleteOriginal(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("o\n")
 	var writer strings.Builder
-	PromptToDelete(&writer, reader, deleter, duplicates[0])
+
+	deletedFiles, err := PromptToDelete(&writer, reader, deleter, duplicates[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(deletedFiles) != 1 {
+		t.Errorf("%d files should be deleted", 1)
+	}
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
 		t.Error("Duplicate should be displayed.")
@@ -223,7 +231,14 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 	deleter := MakeDeleter(false)
 	reader := strings.NewReader("d\n")
 	var writer strings.Builder
-	PromptToDelete(&writer, reader, deleter, duplicates[0])
+	deletedFiles, err := PromptToDelete(&writer, reader, deleter, duplicates[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(deletedFiles) != len(duplicates[0].Duplicates) {
+		t.Errorf("%d files should be deleted", len(duplicates[0].Duplicates))
+	}
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
 		t.Error("Duplicate should be displayed.")
@@ -451,5 +466,69 @@ func TestExcludeFiles(t *testing.T) {
 			t.Errorf("%q should be excluded", "should-not-be-picked-up")
 		}
 	}
+}
 
+func TestCalculateReport(t *testing.T) {
+
+	dir, err := createTestingDirectory(testingDirOptions{
+		CreateChildrenDirs: true,
+		CreateFiles:        true,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	collectedFiles, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: dir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	duplicates := FindDuplicateFiles(collectedFiles)
+
+	report := CalculateReport(collectedFiles, duplicates, []FileHash{})
+
+	sumHashesKB := func(hashs []FileHash) float64 {
+		sum := int64(0)
+		for _, f := range hashs {
+			sum += f.SizeInBytes
+		}
+		return float64(sum) / 1000.0
+	}
+
+	if size := len(collectedFiles); report.CollectedFileCount != size {
+		t.Errorf("expected %d but got %d", size, report.CollectedFileCount)
+	}
+
+	if sum := sumHashesKB(collectedFiles); report.CollectedFileSizeInKB != sum {
+		t.Errorf("expected %f but got %f", 0.0, sum)
+	}
+
+	if size := len(duplicates); report.DuplicateFileCount != size {
+		t.Errorf("expected %d but got %d", size, report.DuplicateFileCount)
+	}
+
+	sumDuplicates := float64(0.0)
+	for _, d := range duplicates {
+		sumDuplicates += sumHashesKB(d.Duplicates)
+	}
+
+	if report.DuplicateFileSizeInKB != sumDuplicates {
+		t.Errorf("expected %f but got %f", sumDuplicates, report.DuplicateFileSizeInKB)
+	}
+
+	if percentage := (float64(len(duplicates)) / float64(len(collectedFiles))) * 100; report.DuplicatePercentage != percentage {
+		t.Errorf("expected %f but got %f", percentage, report.DuplicatePercentage)
+	}
+
+	if report.DeletedFileCount != 0 {
+		t.Errorf("expected %d but got %d", 0, report.DeletedFileCount)
+	}
+
+	if report.DeletedFileSizeInKB != 0.0 {
+		t.Errorf("expected %f but got %f", 0.0, report.DeletedFileSizeInKB)
+	}
 }

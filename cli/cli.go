@@ -2,6 +2,7 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -13,6 +14,7 @@ type args struct {
 	IsInteractive      bool
 	IsForce            bool
 	IsDryRun           bool
+	IsReport           bool
 	FileCollectOptions muka.FileCollectionOptions
 }
 
@@ -23,6 +25,7 @@ func parseArgs(mainArgs []string) (args, error) {
 	interactivePtr := mukaFlags.Bool("i", false, "enable interactive mode to remove duplicates")
 	forcePtr := mukaFlags.Bool("f", false, "remove duplicates without prompting")
 	dryRunPtr := mukaFlags.Bool("dryrun", false, "do not actually remove any files")
+	reportPtr := mukaFlags.Bool("report", false, "generates a report displaying basic program performance")
 	excludeDirsPtr := mukaFlags.String("X", "", "exclude the provided directories from consideration (regex supported)")
 	excludeFilesPtr := mukaFlags.String("x", "", "exclude the provided files from consideration (regex supported)")
 
@@ -54,6 +57,7 @@ func parseArgs(mainArgs []string) (args, error) {
 		IsInteractive:     *interactivePtr,
 		IsForce:           *forcePtr,
 		IsDryRun:          *dryRunPtr,
+		IsReport:          *reportPtr,
 		FileCollectOptions: muka.FileCollectionOptions{
 			DirectoryToSearch: directoryToSearch,
 			ExcludeDirs:       excludeDirs,
@@ -85,14 +89,22 @@ func Run(mainArgs []string) int {
 	}
 
 	deleter := muka.MakeDeleter(args.IsDryRun)
-	if duplicates := muka.FindDuplicateFiles(fileHashes); args.IsForce {
-		muka.ForceDelete(duplicates, deleter)
+	duplicates := muka.FindDuplicateFiles(fileHashes)
+
+	var deletedFiles []muka.FileHash
+	if args.IsForce {
+		deletedFiles = muka.ForceDelete(duplicates, deleter)
 	} else if args.IsInteractive {
 		for _, duplicate := range duplicates {
-			muka.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
+			deletedFiles, _ = muka.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
 		}
 	} else {
 		muka.PrintDuplicates(duplicates)
+	}
+
+	if args.IsReport {
+		report := muka.CalculateReport(fileHashes, duplicates, deletedFiles)
+		fmt.Println(report)
 	}
 
 	return 0

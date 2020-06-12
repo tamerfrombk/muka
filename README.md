@@ -109,6 +109,19 @@ Exclude files from consideration (regex supported):
 > muka -x 'foo.* ^bar'
 ```
 
+Generate a quick summary report at the end:
+
+```
+> muka --report
+
+Original: /tmp/file1.txt
+Duplicates: [ /tmp/file2.txt ]
+
+Files Scanned: 12 (65.72 KB)
+Duplicates Found: 1 (0.00 KB), 8.33% of scanned files
+0 files were deleted saving 0.00 KB
+```
+
 ### Building
 
 `go build main.go`
