@@ -113,7 +113,7 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 		hash, err := hashFile(absolutePath)
 		if err != nil {
 			log.Printf("hashing %q: %v", absolutePath, err)
-			return nil
+			return err
 		}
 
 		files = append(files, hash)
