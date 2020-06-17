@@ -85,6 +85,7 @@ func (r Report) String() string {
 // CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
 func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 	var files []FileHash
+	sizeCache := make(map[int64]int)
 	err := filepath.Walk(filepath.Clean(options.DirectoryToSearch), func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -110,13 +111,16 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 			return err
 		}
 
-		hash, err := hashFile(absolutePath)
-		if err != nil {
-			log.Printf("hashing %q: %v", absolutePath, err)
-			return err
+		if n, exists := sizeCache[info.Size()]; exists {
+			sizeCache[info.Size()] = n + 1
+		} else {
+			sizeCache[info.Size()] = 1
 		}
 
-		files = append(files, hash)
+		files = append(files, FileHash{
+			AbsolutePath: absolutePath,
+			SizeInBytes:  info.Size(),
+		})
 
 		return nil
 	})
@@ -125,33 +129,36 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 		return nil, err
 	}
 
+	for i := 0; i < len(files); i++ {
+		f := &files[i]
+		// If the file has a unique size, there is no way it could be a duplicate
+		// so we avoid having to hash it for performance reasons
+		if sizeCache[f.SizeInBytes] >= 2 {
+			hash, err := hashFile(f.AbsolutePath)
+			if err == nil {
+				f.Hash = hash
+			} else {
+				log.Printf("hashing %q : %v", f.AbsolutePath, err)
+			}
+		}
+	}
+
 	return files, nil
 }
 
-func hashFile(filePath string) (FileHash, error) {
+func hashFile(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return FileHash{}, err
+		return "", err
 	}
 	defer file.Close()
 
 	hasher := sha1.New()
 	if _, err := io.Copy(hasher, file); err != nil {
-		return FileHash{}, err
+		return "", err
 	}
 
-	info, err := file.Stat()
-	if err != nil {
-		return FileHash{}, err
-	}
-
-	fileHash := FileHash{
-		AbsolutePath: filePath,
-		Hash:         hex.EncodeToString(hasher.Sum([]byte{})),
-		SizeInBytes:  info.Size(),
-	}
-
-	return fileHash, nil
+	return hex.EncodeToString(hasher.Sum([]byte{})), nil
 }
 
 // FindDuplicateFiles does as it suggests

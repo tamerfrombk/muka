@@ -49,7 +49,7 @@ func (cache *DuplicateFileCache) GetDuplicates() []DuplicateFile {
 
 	nonEmptyDuplicates := make([]DuplicateFile, 0, len(allDuplicates))
 	for _, d := range allDuplicates {
-		if len(d.Duplicates) > 0 {
+		if len(d.Duplicates) > 0 && d.Original.Hash != "" {
 			nonEmptyDuplicates = append(nonEmptyDuplicates, d)
 		}
 	}
