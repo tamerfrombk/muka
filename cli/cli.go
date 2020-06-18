@@ -82,14 +82,14 @@ func Run(mainArgs []string) int {
 		return 1
 	}
 
-	fileHashes, err := muka.CollectFiles(args.FileCollectOptions)
+	directory, err := muka.CollectFiles(args.FileCollectOptions)
 	if err != nil {
 		log.Printf("unable to find files in %q: %v", args.OriginalDirectory, err)
 		return 1
 	}
 
 	deleter := muka.MakeDeleter(args.IsDryRun)
-	duplicates := muka.FindDuplicateFiles(fileHashes)
+	duplicates := muka.FindDuplicateFiles(directory)
 
 	var deletedFiles []muka.FileHash
 	if args.IsForce {
@@ -103,7 +103,7 @@ func Run(mainArgs []string) int {
 	}
 
 	if args.IsReport {
-		report := muka.CalculateReport(fileHashes, duplicates, deletedFiles)
+		report := muka.CalculateReport(directory, duplicates, deletedFiles)
 		fmt.Println(report)
 	}
 

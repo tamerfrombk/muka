@@ -13,16 +13,30 @@ import (
 	"strings"
 )
 
+// FileSizeCache is a mapping between the size of a file and the count
+type FileSizeCache map[int64]int
+
+// FileData holds basic metadata about a file
+type FileData struct {
+	AbsolutePath string
+	SizeInBytes  int64
+}
+
 // FileHash defines the file hash
 type FileHash struct {
-	AbsolutePath string
-	Hash         string
-	SizeInBytes  int64
+	FileData
+	Hash string
 }
 
 func (hash FileHash) String() string {
 
 	return hash.AbsolutePath
+}
+
+// Directory holds the collected information about a directory
+type Directory struct {
+	EncounteredFiles []FileData
+	HashedFiles      []FileHash
 }
 
 // DuplicateFile holds original and duplicate FileHashes
@@ -82,10 +96,12 @@ func (r Report) String() string {
 	return b.String()
 }
 
-// CollectFiles Recursively walks the provided directory and creates FileHash for each encountered file
-func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
-	var files []FileHash
-	sizeCache := make(map[int64]int)
+// CollectFiles Recursively walks the provided directory and processes each file and directory it encounters
+// This function will return, in order, a list of all the files it encountered, a list of files that were hashed,
+// and an error if one is encountered.
+func CollectFiles(options FileCollectionOptions) (Directory, error) {
+	var fileData []FileData
+	sizeCache := make(FileSizeCache)
 	err := filepath.Walk(filepath.Clean(options.DirectoryToSearch), func(file string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -117,7 +133,7 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 			sizeCache[info.Size()] = 1
 		}
 
-		files = append(files, FileHash{
+		fileData = append(fileData, FileData{
 			AbsolutePath: absolutePath,
 			SizeInBytes:  info.Size(),
 		})
@@ -126,24 +142,35 @@ func CollectFiles(options FileCollectionOptions) ([]FileHash, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return Directory{}, err
 	}
 
-	for i := 0; i < len(files); i++ {
-		f := &files[i]
+	return Directory{
+		EncounteredFiles: fileData,
+		HashedFiles:      hashFiles(fileData, sizeCache),
+	}, nil
+}
+
+func hashFiles(fileData []FileData, sizeCache FileSizeCache) []FileHash {
+
+	fileHashes := make([]FileHash, 0, len(fileData))
+	for _, fd := range fileData {
 		// If the file has a unique size, there is no way it could be a duplicate
 		// so we avoid having to hash it for performance reasons
-		if sizeCache[f.SizeInBytes] >= 2 {
-			hash, err := hashFile(f.AbsolutePath)
+		if sizeCache[fd.SizeInBytes] > 1 {
+			h, err := hashFile(fd.AbsolutePath)
 			if err == nil {
-				f.Hash = hash
+				fileHashes = append(fileHashes, FileHash{
+					FileData: fd,
+					Hash:     h,
+				})
 			} else {
-				log.Printf("hashing %q : %v", f.AbsolutePath, err)
+				log.Printf("hashing %q : %v", fd.AbsolutePath, err)
 			}
 		}
 	}
 
-	return files, nil
+	return fileHashes
 }
 
 func hashFile(filePath string) (string, error) {
@@ -162,10 +189,10 @@ func hashFile(filePath string) (string, error) {
 }
 
 // FindDuplicateFiles does as it suggests
-func FindDuplicateFiles(fileHashes []FileHash) []DuplicateFile {
+func FindDuplicateFiles(directory Directory) []DuplicateFile {
 
 	cache := NewCache()
-	for _, fileHash := range fileHashes {
+	for _, fileHash := range directory.HashedFiles {
 		cache.Add(fileHash)
 	}
 
@@ -266,7 +293,7 @@ func CompileSpaceSeparatedPatterns(s string) ([]*regexp.Regexp, error) {
 }
 
 // CalculateReport Generates a report detailing basic program behavior
-func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedFiles []FileHash) Report {
+func CalculateReport(directory Directory, duplicates []DuplicateFile, deletedFiles []FileHash) Report {
 
 	sum := func(hashes []FileHash) int64 {
 		sum := int64(0)
@@ -276,7 +303,10 @@ func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedF
 		return sum
 	}
 
-	sumOfFileSizes := sum(fileHashes)
+	sumOfFileSizes := int64(0)
+	for _, fd := range directory.EncounteredFiles {
+		sumOfFileSizes += fd.SizeInBytes
+	}
 
 	sumOfDuplicateSizes := int64(0)
 	sumOfDuplicateCount := 0
@@ -288,11 +318,11 @@ func CalculateReport(fileHashes []FileHash, duplicates []DuplicateFile, deletedF
 	sumOfDeletedFileSizes := sum(deletedFiles)
 
 	return Report{
-		CollectedFileCount:    len(fileHashes),
+		CollectedFileCount:    len(directory.EncounteredFiles),
 		CollectedFileSizeInKB: float64(sumOfFileSizes) / 1000.0,
 		DuplicateFileCount:    sumOfDuplicateCount,
 		DuplicateFileSizeInKB: float64(sumOfDuplicateSizes) / 1000.0,
-		DuplicatePercentage:   (float64(sumOfDuplicateCount) / float64(len(fileHashes))) * 100,
+		DuplicatePercentage:   (float64(sumOfDuplicateCount) / float64(len(directory.EncounteredFiles))) * 100,
 		DeletedFileCount:      len(deletedFiles),
 		DeletedFileSizeInKB:   float64(sumOfDeletedFileSizes) / 1000.0,
 	}

@@ -49,12 +49,14 @@ func isDir(path string) bool {
 func TestDuplicateFileWithZeroDuplicates(t *testing.T) {
 	fileHashes := []FileHash{
 		{
-			AbsolutePath: "file1.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file1.txt",
+			},
+			Hash: "abcdefg",
 		},
 	}
 
-	duplicateFiles := FindDuplicateFiles(fileHashes)
+	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
 	if len(duplicateFiles) != 0 {
 		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 0, len(duplicateFiles))
 	}
@@ -63,16 +65,20 @@ func TestDuplicateFileWithZeroDuplicates(t *testing.T) {
 func TestDuplicateFileWithOneDuplicate(t *testing.T) {
 	fileHashes := []FileHash{
 		{
-			AbsolutePath: "file1.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file1.txt",
+			},
+			Hash: "abcdefg",
 		},
 		{
-			AbsolutePath: "file2.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file2.txt",
+			},
+			Hash: "abcdefg",
 		},
 	}
 
-	duplicateFiles := FindDuplicateFiles(fileHashes)
+	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
 	if len(duplicateFiles) != 1 {
 		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles))
 	}
@@ -85,20 +91,26 @@ func TestDuplicateFileWithOneDuplicate(t *testing.T) {
 func TestDuplicateFileWithMoreThanOneDuplicate(t *testing.T) {
 	fileHashes := []FileHash{
 		{
-			AbsolutePath: "file1.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file1.txt",
+			},
+			Hash: "abcdefg",
 		},
 		{
-			AbsolutePath: "file2.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file2.txt",
+			},
+			Hash: "abcdefg",
 		},
 		{
-			AbsolutePath: "file3.txt",
-			Hash:         "abcdefg",
+			FileData: FileData{
+				AbsolutePath: "file3.txt",
+			},
+			Hash: "abcdefg",
 		},
 	}
 
-	duplicateFiles := FindDuplicateFiles(fileHashes)
+	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
 	if len(duplicateFiles) != 1 {
 		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles))
 	}
@@ -115,15 +127,15 @@ func TestCollectFilesEmptyDirectoryReturnsNoFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	muka, err := CollectFiles(FileCollectionOptions{
+	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: dir,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(muka) > 0 {
-		t.Error("In an empty directory, no muka should be collected.")
+	if len(d.EncounteredFiles) > 0 {
+		t.Error("In an empty directory, no files should be collected.")
 	}
 }
 
@@ -138,18 +150,18 @@ func TestCollectFilesHasOnlyFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	muka, err := CollectFiles(FileCollectionOptions{
+	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: dir,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(muka) == 0 {
-		t.Errorf("Non empty list of muka expected.")
+	if len(d.EncounteredFiles) == 0 {
+		t.Errorf("Non empty list of files expected.")
 	}
 
-	for _, f := range muka {
+	for _, f := range d.EncounteredFiles {
 		if isDir(f.AbsolutePath) {
 			t.Errorf("No directories should be returned but '%s' is a directory.\n", f.AbsolutePath)
 		}
@@ -419,7 +431,7 @@ func TestExcludeDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fileHashes, err := CollectFiles(FileCollectionOptions{
+	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: dir,
 		ExcludeDirs:       excludeDirs,
 	})
@@ -428,7 +440,7 @@ func TestExcludeDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, f := range fileHashes {
+	for _, f := range d.HashedFiles {
 		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
 			t.Errorf("%q should be excluded", "should-not-be-picked-up")
 		}
@@ -452,7 +464,7 @@ func TestExcludeFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fileHashes, err := CollectFiles(FileCollectionOptions{
+	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: dir,
 		ExcludeFiles:      excludeFiles,
 	})
@@ -461,7 +473,7 @@ func TestExcludeFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, f := range fileHashes {
+	for _, f := range d.HashedFiles {
 		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
 			t.Errorf("%q should be excluded", "should-not-be-picked-up")
 		}
@@ -480,30 +492,38 @@ func TestCalculateReport(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	collectedFiles, err := CollectFiles(FileCollectionOptions{
+	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: dir,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	duplicates := FindDuplicateFiles(collectedFiles)
+	duplicates := FindDuplicateFiles(d)
 
-	report := CalculateReport(collectedFiles, duplicates, []FileHash{})
+	report := CalculateReport(d, duplicates, []FileHash{})
 
-	sumHashesKB := func(hashs []FileHash) float64 {
+	sumFileDataKB := func(fds []FileData) float64 {
 		sum := int64(0)
-		for _, f := range hashs {
+		for _, f := range fds {
 			sum += f.SizeInBytes
 		}
 		return float64(sum) / 1000.0
 	}
 
-	if size := len(collectedFiles); report.CollectedFileCount != size {
+	sumHashesKB := func(hashes []FileHash) float64 {
+		sum := int64(0)
+		for _, f := range hashes {
+			sum += f.SizeInBytes
+		}
+		return float64(sum) / 1000.0
+	}
+
+	if size := len(d.EncounteredFiles); report.CollectedFileCount != size {
 		t.Errorf("expected %d but got %d", size, report.CollectedFileCount)
 	}
 
-	if sum := sumHashesKB(collectedFiles); report.CollectedFileSizeInKB != sum {
+	if sum := sumFileDataKB(d.EncounteredFiles); report.CollectedFileSizeInKB != sum {
 		t.Errorf("expected %f but got %f", 0.0, sum)
 	}
 
@@ -525,7 +545,7 @@ func TestCalculateReport(t *testing.T) {
 		t.Errorf("expected %f but got %f", sumDuplicates, report.DuplicateFileSizeInKB)
 	}
 
-	if percentage := (float64(duplicateCount) / float64(len(collectedFiles))) * 100; report.DuplicatePercentage != percentage {
+	if percentage := (float64(duplicateCount) / float64(len(d.EncounteredFiles))) * 100; report.DuplicatePercentage != percentage {
 		t.Errorf("expected %f but got %f", percentage, report.DuplicatePercentage)
 	}
 
