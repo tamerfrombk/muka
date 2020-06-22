@@ -1,40 +1,28 @@
 package muka
 
 import (
-	"io/ioutil"
+	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-type testingDirOptions struct {
-	CreateChildrenDirs bool
-	CreateFiles        bool
+func getTestingDir(dir string) string {
+	return filepath.Join("..", "testdata", dir)
 }
 
-func createTestingDirectory(options testingDirOptions) (string, error) {
-	dir, err := ioutil.TempDir("", "TestMuka")
-	if err != nil {
-		return "", err
+func assertEqualsI(t *testing.T, expected, actual int) {
+	if expected != actual {
+		t.Errorf("expected %d but got %d", expected, actual)
 	}
+}
 
-	if options.CreateChildrenDirs {
-		for i := 0; i < 5; i++ {
-			if _, err := ioutil.TempDir(dir, "TestMukaChild"); err != nil {
-				return "", err
-			}
-		}
+func assertEqualsF(t *testing.T, expected, actual float64) {
+	// avoid float direct comparisons by taking a delta
+	if math.Abs(expected-actual) >= 0.01 {
+		t.Errorf("expected %f but got %f", expected, actual)
 	}
-
-	if options.CreateFiles {
-		for i := 0; i < 5; i++ {
-			if _, err := ioutil.TempFile(dir, "TestMukaFile"); err != nil {
-				return "", err
-			}
-		}
-	}
-
-	return dir, nil
 }
 
 func isDir(path string) bool {
@@ -57,9 +45,7 @@ func TestDuplicateFileWithZeroDuplicates(t *testing.T) {
 	}
 
 	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
-	if len(duplicateFiles) != 0 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 0, len(duplicateFiles))
-	}
+	assertEqualsI(t, 0, len(duplicateFiles))
 }
 
 func TestDuplicateFileWithOneDuplicate(t *testing.T) {
@@ -79,13 +65,8 @@ func TestDuplicateFileWithOneDuplicate(t *testing.T) {
 	}
 
 	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
-	if len(duplicateFiles) != 1 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles))
-	}
-
-	if len(duplicateFiles[0].Duplicates) != 1 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles[0].Duplicates))
-	}
+	assertEqualsI(t, 1, len(duplicateFiles))
+	assertEqualsI(t, 1, len(duplicateFiles[0].Duplicates))
 }
 
 func TestDuplicateFileWithMoreThanOneDuplicate(t *testing.T) {
@@ -111,128 +92,74 @@ func TestDuplicateFileWithMoreThanOneDuplicate(t *testing.T) {
 	}
 
 	duplicateFiles := FindDuplicateFiles(Directory{HashedFiles: fileHashes})
-	if len(duplicateFiles) != 1 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 1, len(duplicateFiles))
-	}
-
-	if len(duplicateFiles[0].Duplicates) != 2 {
-		t.Errorf("Expected '%d' entry but found '%d' instead.\n", 2, len(duplicateFiles[0].Duplicates))
-	}
+	assertEqualsI(t, 1, len(duplicateFiles))
+	assertEqualsI(t, 2, len(duplicateFiles[0].Duplicates))
 }
 
 func TestCollectFilesEmptyDirectoryReturnsNoFiles(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("empty"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(d.EncounteredFiles) > 0 {
-		t.Error("In an empty directory, no files should be collected.")
+		t.Error("no files should be collected")
 	}
 }
 
 func TestCollectFilesHasOnlyFiles(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(d.EncounteredFiles) == 0 {
-		t.Errorf("Non empty list of files expected.")
+		t.Error("non empty list of files expected")
 	}
 
 	for _, f := range d.EncounteredFiles {
 		if isDir(f.AbsolutePath) {
-			t.Errorf("No directories should be returned but '%s' is a directory.\n", f.AbsolutePath)
+			t.Errorf("%q is a directory", f.AbsolutePath)
 		}
 	}
 }
 
 func TestPromptToDeleteOriginal(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	fileHashes, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	duplicates := FindDuplicateFiles(fileHashes)
-
-	deleter := MakeDeleter(false)
+	deleter := MakeDeleter(true)
 	reader := strings.NewReader("o\n")
 	var writer strings.Builder
 
+	duplicates := FindDuplicateFiles(fileHashes)
 	deletedFiles, err := PromptToDelete(&writer, reader, deleter, duplicates[0])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(deletedFiles) != 1 {
-		t.Errorf("%d files should be deleted", 1)
-	}
+	assertEqualsI(t, 1, len(deletedFiles))
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
-		t.Error("Duplicate should be displayed.")
+		t.Error("duplicate should be displayed")
 	}
 
 	if !strings.Contains(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") {
-		t.Error("Incorrect prompt.")
-	}
-
-	if FileExists(duplicates[0].Original.AbsolutePath) {
-		t.Error("The file was supposed to be deleted.")
-	}
-
-	for _, d := range duplicates[0].Duplicates {
-		if !FileExists(d.AbsolutePath) {
-			t.Error("The file was not supposed to be deleted.")
-		}
+		t.Error("incorrect prompt")
 	}
 }
 
 func TestPromptToDeleteDuplicates(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	fileHashes, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -240,7 +167,7 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 
 	duplicates := FindDuplicateFiles(fileHashes)
 
-	deleter := MakeDeleter(false)
+	deleter := MakeDeleter(true)
 	reader := strings.NewReader("d\n")
 	var writer strings.Builder
 	deletedFiles, err := PromptToDelete(&writer, reader, deleter, duplicates[0])
@@ -248,42 +175,20 @@ func TestPromptToDeleteDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(deletedFiles) != len(duplicates[0].Duplicates) {
-		t.Errorf("%d files should be deleted", len(duplicates[0].Duplicates))
-	}
+	assertEqualsI(t, len(deletedFiles), len(duplicates[0].Duplicates))
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
-		t.Error("Duplicate should be displayed.")
+		t.Error("duplicate should be displayed")
 	}
 
 	if !strings.Contains(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") {
-		t.Error("Incorrect prompt.")
-	}
-
-	if !FileExists(duplicates[0].Original.AbsolutePath) {
-		t.Error("The file was not supposed to be deleted.")
-	}
-
-	for _, d := range duplicates[0].Duplicates {
-		if FileExists(d.AbsolutePath) {
-			t.Error("The file was supposed to be deleted.")
-		}
+		t.Error("incorrect prompt")
 	}
 }
 
 func TestPromptSkip(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	fileHashes, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -291,85 +196,47 @@ func TestPromptSkip(t *testing.T) {
 
 	duplicates := FindDuplicateFiles(fileHashes)
 
-	deleter := MakeDeleter(false)
+	deleter := MakeDeleter(true)
 	reader := strings.NewReader("s\n")
 	var writer strings.Builder
 	PromptToDelete(&writer, reader, deleter, duplicates[0])
 
 	if !strings.Contains(writer.String(), duplicates[0].String()) {
-		t.Error("Duplicate should be displayed.")
+		t.Error("duplicate should be displayed")
 	}
 
 	if !strings.Contains(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") {
-		t.Error("Incorrect prompt.")
-	}
-
-	if !FileExists(duplicates[0].Original.AbsolutePath) {
-		t.Error("The file was not supposed to be deleted.")
-	}
-
-	for _, d := range duplicates[0].Duplicates {
-		if !FileExists(d.AbsolutePath) {
-			t.Error("The file was not supposed to be deleted.")
-		}
+		t.Error("incorrect prompt")
 	}
 }
 
 func TestPromptUnexpectedResponsesContinuePrompting(t *testing.T) {
-
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	fileHashes, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	duplicates := FindDuplicateFiles(fileHashes)
-
-	deleter := MakeDeleter(false)
 
 	readers := []*strings.Reader{
 		strings.NewReader("x\no\n"), // invalid response
 		strings.NewReader("\no\n"),  // empty response
 	}
 
+	duplicates := FindDuplicateFiles(fileHashes)
+	deleter := MakeDeleter(true)
 	for _, reader := range readers {
 		var writer strings.Builder
 		PromptToDelete(&writer, reader, deleter, duplicates[0])
 
-		if strings.Count(writer.String(), duplicates[0].String()) != 2 {
-			t.Error("Duplicate should be displayed.")
-		}
-
-		if strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > ") != 2 {
-			t.Error("Incorrect prompt.")
-		}
+		assertEqualsI(t, 2, strings.Count(writer.String(), duplicates[0].String()))
+		assertEqualsI(t, 2, strings.Count(writer.String(), "Which file(s) do you wish to remove? [o/d/s] > "))
 	}
 }
 
 func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
 	fileHashes, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -377,18 +244,15 @@ func TestForceDeleteOnlyRemovesDuplicates(t *testing.T) {
 
 	duplicates := FindDuplicateFiles(fileHashes)
 
-	deleter := MakeDeleter(false)
-	ForceDelete(duplicates, deleter)
+	deleter := MakeDeleter(true)
+	deletedFiles := ForceDelete(duplicates, deleter)
 
-	if !FileExists(duplicates[0].Original.AbsolutePath) {
-		t.Error("The file was not supposed to be deleted.")
+	count := 0
+	for _, d := range duplicates {
+		count += len(d.Duplicates)
 	}
 
-	for _, d := range duplicates[0].Duplicates {
-		if FileExists(d.AbsolutePath) {
-			t.Error("The file was supposed to be deleted.")
-		}
-	}
+	assertEqualsI(t, count, len(deletedFiles))
 }
 
 func TestCompileSpaceSeparatedPatterns(t *testing.T) {
@@ -411,28 +275,13 @@ func TestCompileSpaceSeparatedPatterns(t *testing.T) {
 }
 
 func TestExcludeDirectories(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestIgnore")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	ignoreDir, err := ioutil.TempDir(dir, ".ignoreMe")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := ioutil.TempFile(ignoreDir, "should-not-be-picked-up"); err != nil {
-		t.Fatal(err)
-	}
-
-	excludeDirs, err := CompileSpaceSeparatedPatterns(".ignoreMe")
+	excludeDirs, err := CompileSpaceSeparatedPatterns("d1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 		ExcludeDirs:       excludeDirs,
 	})
 
@@ -441,31 +290,21 @@ func TestExcludeDirectories(t *testing.T) {
 	}
 
 	for _, f := range d.HashedFiles {
-		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
-			t.Errorf("%q should be excluded", "should-not-be-picked-up")
+		if strings.Contains(f.AbsolutePath, "d1") {
+			t.Errorf("%q should be excluded", "d1")
 		}
 	}
 
 }
 
 func TestExcludeFiles(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestIgnore")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	if _, err := ioutil.TempFile(dir, "should-not-be-picked-up"); err != nil {
-		t.Fatal(err)
-	}
-
-	excludeFiles, err := CompileSpaceSeparatedPatterns("should-not-be-picked-up")
+	excludeFiles, err := CompileSpaceSeparatedPatterns("exclude-me")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+		DirectoryToSearch: getTestingDir("small"),
 		ExcludeFiles:      excludeFiles,
 	})
 
@@ -474,34 +313,24 @@ func TestExcludeFiles(t *testing.T) {
 	}
 
 	for _, f := range d.HashedFiles {
-		if strings.Contains(f.AbsolutePath, "should-not-be-picked-up") {
-			t.Errorf("%q should be excluded", "should-not-be-picked-up")
+		if strings.Contains(f.AbsolutePath, "exclude-me") {
+			t.Errorf("%q should be excluded", "exclude-me")
 		}
 	}
 }
 
 func TestCalculateReport(t *testing.T) {
 
-	dir, err := createTestingDirectory(testingDirOptions{
-		CreateChildrenDirs: true,
-		CreateFiles:        true,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: dir,
+	dir, err := CollectFiles(FileCollectionOptions{
+		DirectoryToSearch: getTestingDir("small"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	duplicates := FindDuplicateFiles(d)
+	duplicates := FindDuplicateFiles(dir)
 
-	report := CalculateReport(d, duplicates, []FileHash{})
+	report := CalculateReport(dir, duplicates, []FileHash{})
 
 	sumFileDataKB := func(fds []FileData) float64 {
 		sum := int64(0)
@@ -519,41 +348,23 @@ func TestCalculateReport(t *testing.T) {
 		return float64(sum) / 1000.0
 	}
 
-	if size := len(d.EncounteredFiles); report.CollectedFileCount != size {
-		t.Errorf("expected %d but got %d", size, report.CollectedFileCount)
-	}
-
-	if sum := sumFileDataKB(d.EncounteredFiles); report.CollectedFileSizeInKB != sum {
-		t.Errorf("expected %f but got %f", 0.0, sum)
-	}
+	assertEqualsI(t, len(dir.EncounteredFiles), report.CollectedFileCount)
+	assertEqualsF(t, sumFileDataKB(dir.EncounteredFiles), report.CollectedFileSizeInKB)
 
 	duplicateCount := 0
 	for _, f := range duplicates {
 		duplicateCount += len(f.Duplicates)
 	}
 
-	if report.DuplicateFileCount != duplicateCount {
-		t.Errorf("expected %d but got %d", duplicateCount, report.DuplicateFileCount)
-	}
+	assertEqualsI(t, duplicateCount, report.DuplicateFileCount)
 
 	sumDuplicates := float64(0.0)
 	for _, d := range duplicates {
 		sumDuplicates += sumHashesKB(d.Duplicates)
 	}
 
-	if report.DuplicateFileSizeInKB != sumDuplicates {
-		t.Errorf("expected %f but got %f", sumDuplicates, report.DuplicateFileSizeInKB)
-	}
-
-	if percentage := (float64(duplicateCount) / float64(len(d.EncounteredFiles))) * 100; report.DuplicatePercentage != percentage {
-		t.Errorf("expected %f but got %f", percentage, report.DuplicatePercentage)
-	}
-
-	if report.DeletedFileCount != 0 {
-		t.Errorf("expected %d but got %d", 0, report.DeletedFileCount)
-	}
-
-	if report.DeletedFileSizeInKB != 0.0 {
-		t.Errorf("expected %f but got %f", 0.0, report.DeletedFileSizeInKB)
-	}
+	assertEqualsF(t, sumDuplicates, report.DuplicateFileSizeInKB)
+	assertEqualsF(t, (float64(duplicateCount)/float64(len(dir.EncounteredFiles)))*100, report.DuplicatePercentage)
+	assertEqualsI(t, 0, report.DeletedFileCount)
+	assertEqualsF(t, 0.0, report.DeletedFileSizeInKB)
 }
