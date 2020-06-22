@@ -71,6 +71,20 @@ func setupLogger() {
 	log.SetFlags(0)
 }
 
+func onInteractive(deleter muka.Deleter, duplicates []muka.DuplicateFile) []muka.FileHash {
+	var deletedFiles []muka.FileHash
+	for _, duplicate := range duplicates {
+		files, err := muka.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
+		if err == nil {
+			for _, f := range files {
+				deletedFiles = append(deletedFiles, f)
+			}
+		}
+	}
+
+	return deletedFiles
+}
+
 // Run main entry point
 func Run(mainArgs []string) int {
 
@@ -95,9 +109,7 @@ func Run(mainArgs []string) int {
 	if args.IsForce {
 		deletedFiles = muka.ForceDelete(duplicates, deleter)
 	} else if args.IsInteractive {
-		for _, duplicate := range duplicates {
-			deletedFiles, _ = muka.PromptToDelete(os.Stdout, os.Stdin, deleter, duplicate)
-		}
+		deletedFiles = onInteractive(deleter, duplicates)
 	} else {
 		muka.PrintDuplicates(duplicates)
 	}
