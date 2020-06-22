@@ -96,19 +96,6 @@ func TestDuplicateFileWithMoreThanOneDuplicate(t *testing.T) {
 	assertEqualsI(t, 2, len(duplicateFiles[0].Duplicates))
 }
 
-func TestCollectFilesEmptyDirectoryReturnsNoFiles(t *testing.T) {
-	d, err := CollectFiles(FileCollectionOptions{
-		DirectoryToSearch: getTestingDir("empty"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(d.EncounteredFiles) > 0 {
-		t.Error("no files should be collected")
-	}
-}
-
 func TestCollectFilesHasOnlyFiles(t *testing.T) {
 	d, err := CollectFiles(FileCollectionOptions{
 		DirectoryToSearch: getTestingDir("small"),
