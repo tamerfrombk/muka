@@ -144,6 +144,8 @@ The following are known limitations of `muka`. Some of these will be built into 
 
 1. Specifying a recursion depth
    - As of now, `muka` does a full recursive search of the specified directory.
+2. Symlink following
+   - As of now, `muka` does not follow symlinks.
 
 ## Contributing
 
