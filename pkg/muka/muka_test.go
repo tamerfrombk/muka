@@ -9,7 +9,7 @@ import (
 )
 
 func getTestingDir(dir string) string {
-	return filepath.Join("..", "testdata", dir)
+	return filepath.Join("..", "..", "test", "testdata", dir)
 }
 
 func assertEqualsI(t *testing.T, expected, actual int) {

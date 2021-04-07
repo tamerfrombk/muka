@@ -136,7 +136,7 @@ Alternatively, you can move the `muka` executable after building to a directory 
 
 ### Running the tests
 
-`go test github.com/tamerfrombk/muka/muka`
+`go test ./pkg/muka`
 
 ## Limitations
 
