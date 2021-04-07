@@ -93,9 +93,6 @@ type Report struct {
 }
 
 func (r Report) String() string {
-	bold := color.New(color.Bold)
-
-	var b strings.Builder
 
 	unitSizeFn := func(sizeInKb float64) (string, float64) {
 		unit := "KB"
@@ -109,6 +106,9 @@ func (r Report) String() string {
 
 		return unit, sizeInKb
 	}
+
+	bold := color.New(color.Bold)
+	var b strings.Builder
 
 	scannedUnit, scannedSize := unitSizeFn(r.CollectedFileSizeInKB)
 	bold.Fprintf(&b, "Files Scanned: %d (%.2f %s)\n", r.CollectedFileCount, scannedSize, scannedUnit)
