@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/tamerfrombk/muka/muka"
+	"github.com/tamerfrombk/muka/pkg/muka"
 )
 
 type args struct {
