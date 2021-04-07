@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 // FileSizeCache is a mapping between the size of a file and the count
@@ -46,22 +48,28 @@ type DuplicateFile struct {
 }
 
 func (duplicate DuplicateFile) String() string {
+	red := color.New(color.FgRed)
+	green := color.New(color.FgGreen)
+	bold := color.New(color.Bold)
+
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "Original: %s\n", duplicate.Original)
+	bold.Fprint(&b, "Original: ")
+
+	green.Fprintf(&b, "%s\n", duplicate.Original)
 	dupLength := len(duplicate.Duplicates)
 	if dupLength == 0 {
 		return b.String()
 	}
 
-	b.WriteString("Duplicates: [ ")
+	bold.Fprint(&b, "Duplicates: [ ")
 	for i := 0; i < dupLength-1; i++ {
-		b.WriteString(duplicate.Duplicates[i].String())
-		b.WriteString(", ")
+		red.Fprint(&b, duplicate.Duplicates[i].String())
+		bold.Fprint(&b, ", ")
 	}
 
-	b.WriteString(duplicate.Duplicates[dupLength-1].String())
-	b.WriteString(" ]\n")
+	red.Fprint(&b, duplicate.Duplicates[dupLength-1].String())
+	bold.Fprint(&b, " ]\n")
 
 	return b.String()
 }
