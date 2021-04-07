@@ -93,13 +93,32 @@ type Report struct {
 }
 
 func (r Report) String() string {
+	bold := color.New(color.Bold)
 
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "Files Scanned: %d (%.2f KB)\n", r.CollectedFileCount, r.CollectedFileSizeInKB)
-	fmt.Fprintf(&b, "Duplicates Found: %d (%.2f KB), %.2f%% of scanned files\n",
-		r.DuplicateFileCount, r.DuplicateFileSizeInKB, r.DuplicatePercentage)
-	fmt.Fprintf(&b, "%d files were deleted saving %.2f KB\n", r.DeletedFileCount, r.DeletedFileSizeInKB)
+	unitSizeFn := func(sizeInKb float64) (string, float64) {
+		unit := "KB"
+		if sizeInKb/1_000_000 > 1 {
+			unit = "GB"
+			sizeInKb /= 1_000_000
+		} else if sizeInKb/1_000 > 1 {
+			unit = "MB"
+			sizeInKb /= 1_000
+		}
+
+		return unit, sizeInKb
+	}
+
+	scannedUnit, scannedSize := unitSizeFn(r.CollectedFileSizeInKB)
+	bold.Fprintf(&b, "Files Scanned: %d (%.2f %s)\n", r.CollectedFileCount, scannedSize, scannedUnit)
+
+	dupUnit, dupSize := unitSizeFn(r.DuplicateFileSizeInKB)
+	bold.Fprintf(&b, "Duplicates Found: %d (%.2f %s), %.2f%% of scanned files\n",
+		r.DuplicateFileCount, dupSize, dupUnit, r.DuplicatePercentage)
+
+	delUnit, delSize := unitSizeFn(r.DeletedFileSizeInKB)
+	bold.Fprintf(&b, "%d files were deleted saving %.2f %s\n", r.DeletedFileCount, delSize, delUnit)
 
 	return b.String()
 }
