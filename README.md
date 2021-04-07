@@ -124,13 +124,13 @@ Duplicates Found: 1 (0.00 KB), 8.33% of scanned files
 
 ### Building
 
-`go build main.go`
+`go build ./cmd/muka`
 
 ### Installing
 
 This will install `muka` to your `GOBIN` directory.
 
-`go install main.go`
+`go install ./cmd/muka`
 
 Alternatively, you can move the `muka` executable after building to a directory of your choice.
 
