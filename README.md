@@ -130,7 +130,9 @@ Duplicates Found: 1 (0.00 KB), 8.33% of scanned files
 
 This will install `muka` to your `GOBIN` directory.
 
-`go install ./cmd/muka`
+from golang 1.17 afterwards: `go install github.com/tamerfrombk/muka/cmd/muka@latest`
+
+from the cloned repository: `go install ./cmd/muka`
 
 Alternatively, you can move the `muka` executable after building to a directory of your choice.
 
